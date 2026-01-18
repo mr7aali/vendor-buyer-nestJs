@@ -1,0 +1,268 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres:1234@localhost:5432/you_db?schema=public"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  userType     String   @map("user_type") // "vendor" or "buyer"
+  fullName     String?  @map("full_name")
+  phone        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  vendor           Vendor?
+  buyer            Buyer?
+  messagesSent     Message[]      @relation("MessageSender")
+  messagesReceived Message[]      @relation("MessageReceiver")
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+model Vendor {
+  id                  String   @id @default(uuid())
+  userId              String   @unique @map("user_id")
+  vendorCode          String   @unique @map("vendor_code")
+  businessName        String   @map("business_name")
+  businessDescription String?  @map("business_description")
+  businessAddress     String?  @map("business_address")
+  logoUrl             String?  @map("logo_url")
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connections VendorBuyerConnection[]
+  categories  Category[]
+  products    Product[]
+  orders      Order[]
+  coupons     Coupon[]
+  messages    Message[]
+
+  @@map("vendors")
+}
+
+model Buyer {
+  id              String   @id @default(uuid())
+  userId          String   @unique @map("user_id")
+  shippingAddress String?  @map("shipping_address")
+  city            String?
+  postalCode      String?  @map("postal_code")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connections       VendorBuyerConnection[]
+  cart              Cart?
+  orders            Order[]
+  couponAssignments CouponBuyerAssignment[]
+  messages          Message[]
+
+  @@map("buyers")
+}
+
+model VendorBuyerConnection {
+  id          String   @id @default(uuid())
+  vendorId    String   @map("vendor_id")
+  buyerId     String   @map("buyer_id")
+  connectedAt DateTime @default(now()) @map("connected_at")
+  isActive    Boolean  @default(true) @map("is_active")
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  buyer  Buyer  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, buyerId])
+  @@map("vendor_buyer_connections")
+}
+
+model Category {
+  id           String   @id @default(uuid())
+  vendorId     String   @map("vendor_id")
+  name         String
+  description  String?
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  vendor   Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  categoryId    String   @map("category_id")
+  vendorId      String   @map("vendor_id")
+  name          String
+  description   String?
+  price         Decimal  @db.Decimal(10, 2)
+  stockQuantity Int      @default(0) @map("stock_quantity")
+  imageUrl      String?  @map("image_url")
+  isAvailable   Boolean  @default(true) @map("is_available")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  category   Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  vendor     Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+model Cart {
+  id        String   @id @default(uuid())
+  buyerId   String   @unique @map("buyer_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  buyer Buyer      @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id              String   @id @default(uuid())
+  cartId          String   @map("cart_id")
+  productId       String   @map("product_id")
+  quantity        Int
+  priceAtAddition Decimal  @map("price_at_addition") @db.Decimal(10, 2)
+  addedAt         DateTime @default(now()) @map("added_at")
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId])
+  @@map("cart_items")
+}
+
+model Order {
+  id              String   @id @default(uuid())
+  buyerId         String   @map("buyer_id")
+  vendorId        String   @map("vendor_id")
+  orderNumber     String   @unique @map("order_number")
+  subtotal        Decimal  @db.Decimal(10, 2)
+  discountAmount  Decimal  @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  totalAmount     Decimal  @map("total_amount") @db.Decimal(10, 2)
+  status          String   @default("pending") // pending, processing, shipped, delivered, cancelled
+  shippingAddress String   @map("shipping_address")
+  orderedAt       DateTime @default(now()) @map("ordered_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  buyer   Buyer       @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  vendor  Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  items   OrderItem[]
+  payment Payment?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String   @map("order_id")
+  productId  String   @map("product_id")
+  quantity   Int
+  unitPrice  Decimal  @map("unit_price") @db.Decimal(10, 2)
+  totalPrice Decimal  @map("total_price") @db.Decimal(10, 2)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model Payment {
+  id               String    @id @default(uuid())
+  orderId          String    @unique @map("order_id")
+  stripePaymentId  String?   @unique @map("stripe_payment_id")
+  stripeCustomerId String?   @map("stripe_customer_id")
+  amount           Decimal   @db.Decimal(10, 2)
+  currency         String    @default("usd")
+  status           String    @default("pending") // pending, succeeded, failed, refunded
+  paymentMethod    String?   @map("payment_method")
+  paidAt           DateTime? @map("paid_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Coupon {
+  id                String   @id @default(uuid())
+  vendorId          String   @map("vendor_id")
+  code              String
+  discountType      String   @map("discount_type") // "percentage" or "fixed"
+  discountValue     Decimal  @map("discount_value") @db.Decimal(10, 2)
+  minPurchaseAmount Decimal? @map("min_purchase_amount") @db.Decimal(10, 2)
+  usageLimit        Int?     @map("usage_limit")
+  usedCount         Int      @default(0) @map("used_count")
+  validFrom         DateTime @map("valid_from")
+  validUntil        DateTime @map("valid_until")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  vendor           Vendor                  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  buyerAssignments CouponBuyerAssignment[]
+
+  @@unique([vendorId, code])
+  @@map("coupons")
+}
+
+model CouponBuyerAssignment {
+  id         String    @id @default(uuid())
+  couponId   String    @map("coupon_id")
+  buyerId    String    @map("buyer_id")
+  isUsed     Boolean   @default(false) @map("is_used")
+  assignedAt DateTime  @default(now()) @map("assigned_at")
+  usedAt     DateTime? @map("used_at")
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  buyer  Buyer  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, buyerId])
+  @@map("coupon_buyer_assignments")
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  senderId    String   @map("sender_id")
+  receiverId  String   @map("receiver_id")
+  vendorId    String?  @map("vendor_id")
+  buyerId     String?  @map("buyer_id")
+  messageText String   @map("message_text")
+  isRead      Boolean  @default(false) @map("is_read")
+  sentAt      DateTime @default(now()) @map("sent_at")
+
+  sender   User    @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User    @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  vendor   Vendor? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  buyer    Buyer?  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String
+  message   String
+  type      String // "info", "success", "warning", "error"
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
