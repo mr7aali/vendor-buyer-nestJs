@@ -1,28 +1,13 @@
--- CreateEnum
-CREATE TYPE "UserType" AS ENUM ('vendor', 'buyer', 'user');
-
--- CreateEnum
-CREATE TYPE "OrderStatus" AS ENUM ('pending', 'processing', 'shipped', 'delivered', 'cancelled');
-
--- CreateEnum
-CREATE TYPE "PaymentStatus" AS ENUM ('pending', 'succeeded', 'failed', 'canceled');
-
--- CreateEnum
-CREATE TYPE "DiscountType" AS ENUM ('percentage', 'fixed');
-
--- CreateEnum
-CREATE TYPE "Gender" AS ENUM ('Female', 'Male', 'Other');
-
 -- CreateTable
-CREATE TABLE "User" (
+CREATE TABLE "user" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
-    "userType" "UserType" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "userType" TEXT NOT NULL,
 
-    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "user_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -33,12 +18,12 @@ CREATE TABLE "Buyer" (
     "fulllName" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
-    "gender" "Gender" NOT NULL,
     "nidFontPhotoUrl" TEXT NOT NULL,
     "nidBackPhotoUrl" TEXT NOT NULL,
     "profilePhotoUrl" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "gender" TEXT NOT NULL,
 
     CONSTRAINT "Buyer_pkey" PRIMARY KEY ("id")
 );
@@ -138,11 +123,11 @@ CREATE TABLE "Order" (
     "subtotal" DECIMAL(10,2) NOT NULL,
     "discountAmount" DECIMAL(10,2) NOT NULL DEFAULT 0,
     "totalAmount" DECIMAL(10,2) NOT NULL,
-    "status" "OrderStatus" NOT NULL DEFAULT 'pending',
     "shippingAddress" TEXT,
     "couponId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "status" TEXT NOT NULL,
 
     CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
 );
@@ -168,9 +153,9 @@ CREATE TABLE "Payment" (
     "stripePaymentId" TEXT,
     "stripeCustomerId" TEXT,
     "amount" DECIMAL(10,2) NOT NULL,
-    "status" "PaymentStatus" NOT NULL DEFAULT 'pending',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "status" TEXT NOT NULL,
 
     CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
 );
@@ -180,7 +165,6 @@ CREATE TABLE "Coupon" (
     "id" TEXT NOT NULL,
     "vendorId" TEXT NOT NULL,
     "code" TEXT NOT NULL,
-    "discountType" "DiscountType" NOT NULL,
     "discountValue" DECIMAL(10,2) NOT NULL,
     "minPurchaseAmount" DECIMAL(10,2),
     "maxDiscountAmount" DECIMAL(10,2),
@@ -191,6 +175,7 @@ CREATE TABLE "Coupon" (
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "discountType" TEXT NOT NULL,
 
     CONSTRAINT "Coupon_pkey" PRIMARY KEY ("id")
 );
@@ -237,7 +222,7 @@ CREATE TABLE "Notification" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+CREATE UNIQUE INDEX "user_email_key" ON "user"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Buyer_userId_key" ON "Buyer"("userId");
@@ -327,25 +312,25 @@ CREATE INDEX "Message_vendorId_buyerId_idx" ON "Message"("vendorId", "buyerId");
 CREATE INDEX "Notification_userId_idx" ON "Notification"("userId");
 
 -- AddForeignKey
-ALTER TABLE "Buyer" ADD CONSTRAINT "Buyer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Buyer" ADD CONSTRAINT "Buyer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Vendor" ADD CONSTRAINT "Vendor_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "VendorBuyerConnection" ADD CONSTRAINT "VendorBuyerConnection_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Vendor" ADD CONSTRAINT "Vendor_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "VendorBuyerConnection" ADD CONSTRAINT "VendorBuyerConnection_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "VendorBuyerConnection" ADD CONSTRAINT "VendorBuyerConnection_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Category" ADD CONSTRAINT "Category_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Product" ADD CONSTRAINT "Product_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Product" ADD CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Product" ADD CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Product" ADD CONSTRAINT "Product_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Cart" ADD CONSTRAINT "Cart_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -360,10 +345,10 @@ ALTER TABLE "CartItem" ADD CONSTRAINT "CartItem_productId_fkey" FOREIGN KEY ("pr
 ALTER TABLE "Order" ADD CONSTRAINT "Order_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Order" ADD CONSTRAINT "Order_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Order" ADD CONSTRAINT "Order_couponId_fkey" FOREIGN KEY ("couponId") REFERENCES "Coupon"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Order" ADD CONSTRAINT "Order_couponId_fkey" FOREIGN KEY ("couponId") REFERENCES "Coupon"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Order" ADD CONSTRAINT "Order_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -378,22 +363,22 @@ ALTER TABLE "Payment" ADD CONSTRAINT "Payment_orderId_fkey" FOREIGN KEY ("orderI
 ALTER TABLE "Coupon" ADD CONSTRAINT "Coupon_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "CouponBuyerAssignment" ADD CONSTRAINT "CouponBuyerAssignment_couponId_fkey" FOREIGN KEY ("couponId") REFERENCES "Coupon"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "CouponBuyerAssignment" ADD CONSTRAINT "CouponBuyerAssignment_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Message" ADD CONSTRAINT "Message_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Message" ADD CONSTRAINT "Message_receiverId_fkey" FOREIGN KEY ("receiverId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Message" ADD CONSTRAINT "Message_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "CouponBuyerAssignment" ADD CONSTRAINT "CouponBuyerAssignment_couponId_fkey" FOREIGN KEY ("couponId") REFERENCES "Coupon"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Message" ADD CONSTRAINT "Message_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Message" ADD CONSTRAINT "Message_receiverId_fkey" FOREIGN KEY ("receiverId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Message" ADD CONSTRAINT "Message_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Message" ADD CONSTRAINT "Message_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;

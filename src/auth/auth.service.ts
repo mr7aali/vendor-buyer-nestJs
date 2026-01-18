@@ -2,7 +2,6 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
-  
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "../prisma/prisma.service";
@@ -94,7 +93,7 @@ export class AuthService {
   }
 
   async registerUser(data: UserRegisterDto) {
-    // Check if user already exists 
+    // Check if user already exists
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email: data.email },
@@ -104,7 +103,7 @@ export class AuthService {
       throw new ConflictException("User with this email already exists");
     }
 
-    if(data.password !== data.confirmPassword){
+    if (data.password !== data.confirmPassword) {
       throw new ConflictException("Password and Confirm Password do not match");
     }
     // Hash password

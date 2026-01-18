@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider     = "prisma-client"
   output       = "../generated/prisma"
@@ -14,105 +8,65 @@ datasource db {
   provider = "postgresql"
 }
 
-// enum UserType {
-//   vendor
-//   buyer
-//   user
-// }
-
-// enum OrderStatus {
-//   pending
-//   processing
-//   shipped
-//   delivered
-//   cancelled
-// }
-
-// enum PaymentStatus {
-//   pending
-//   succeeded
-//   failed
-//   canceled
-// }
-
-// enum DiscountType {
-//   percentage
-//   fixed
-// }
-
-// enum Gender {
-//   Female
-//   Male
-//   Other
-// }
-
-// ----------------starting from here-------------
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  userType     String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  vendor Vendor?
-  buyer  Buyer?
-
-  sentMessages     Message[]      @relation("SentMessages")
+  id               String         @id @default(uuid())
+  email            String         @unique
+  passwordHash     String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  userType         String
+  buyer            Buyer?
   receivedMessages Message[]      @relation("ReceivedMessages")
+  sentMessages     Message[]      @relation("SentMessages")
   notifications    Notification[]
+  vendor           Vendor?
+
+  @@map("user")
 }
 
 model Buyer {
-  id String @id @default(uuid())
-
-  userId          String   @unique
-  vendorCode      String   @unique
-  fulllName       String
-  email           String
-  phone           String
-  gender          String
-  nidFontPhotoUrl String
-  nidBackPhotoUrl String
-  profilePhotoUrl String
-  // shippingAddress String?
-  // city            String?
-  // postalCode      String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
+  id                String                  @id @default(uuid())
+  userId            String                  @unique
+  vendorCode        String                  @unique
+  fulllName         String
+  email             String
+  phone             String
+  nidFontPhotoUrl   String
+  nidBackPhotoUrl   String
+  profilePhotoUrl   String
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  gender            String
   user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  connections       VendorBuyerConnection[]
   cart              Cart?
-  orders            Order[]
   couponAssignments CouponBuyerAssignment[]
   messages          Message[]
+  orders            Order[]
+  connections       VendorBuyerConnection[]
 }
 
 model Vendor {
-  id                  String   @id @default(uuid())
-  userId              String   @unique
-  vendorCode          String   @unique
+  id                  String                  @id @default(uuid())
+  userId              String                  @unique
+  vendorCode          String                  @unique
   fulllName           String
   email               String
   phone               String
   gender              String
-  // --------------
   businessName        String?
   businessDescription String?
   businessAddress     String?
   logoUrl             String?
-  isActive            Boolean  @default(true)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  connections VendorBuyerConnection[]
-  categories  Category[]
-  products    Product[]
-  orders      Order[]
-  coupons     Coupon[]
-  messages    Message[]
+  isActive            Boolean                 @default(true)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  categories          Category[]
+  coupons             Coupon[]
+  messages            Message[]
+  orders              Order[]
+  products            Product[]
+  user                User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connections         VendorBuyerConnection[]
 }
 
 model VendorBuyerConnection {
@@ -123,9 +77,8 @@ model VendorBuyerConnection {
   connectedAt DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  buyer  Buyer  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  buyer       Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@unique([vendorId, buyerId])
   @@index([buyerId])
@@ -133,50 +86,47 @@ model VendorBuyerConnection {
 }
 
 model Category {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   vendorId     String
   name         String
   description  String?
-  displayOrder Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  vendor   Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  products Product[]
+  displayOrder Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  vendor       Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  products     Product[]
 
   @@index([vendorId])
 }
 
 model Product {
-  id            String   @id @default(uuid())
+  id            String      @id @default(uuid())
   vendorId      String
   categoryId    String
   name          String
   description   String?
-  price         Decimal  @db.Decimal(10, 2)
-  stockQuantity Int      @default(0)
+  price         Decimal     @db.Decimal(10, 2)
+  stockQuantity Int         @default(0)
   imageUrl      String?
-  isAvailable   Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  vendor     Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  category   Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  cartItems  CartItem[]
-  orderItems OrderItem[]
+  isAvailable   Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  vendor        Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@index([vendorId])
   @@index([categoryId])
 }
 
 model Cart {
-  id        String   @id @default(uuid())
-  buyerId   String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  buyer Buyer      @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  items CartItem[]
+  id        String     @id @default(uuid())
+  buyerId   String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  buyer     Buyer      @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  items     CartItem[]
 }
 
 model CartItem {
@@ -187,33 +137,31 @@ model CartItem {
   priceAtAddition Decimal  @db.Decimal(10, 2)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cart            Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([cartId, productId])
   @@index([cartId])
 }
 
 model Order {
-  id              String   @id @default(uuid())
+  id              String      @id @default(uuid())
   buyerId         String
   vendorId        String
-  orderNumber     String   @unique
-  subtotal        Decimal  @db.Decimal(10, 2)
-  discountAmount  Decimal  @default(0) @db.Decimal(10, 2)
-  totalAmount     Decimal  @db.Decimal(10, 2)
-  status          String
+  orderNumber     String      @unique
+  subtotal        Decimal     @db.Decimal(10, 2)
+  discountAmount  Decimal     @default(0) @db.Decimal(10, 2)
+  totalAmount     Decimal     @db.Decimal(10, 2)
   shippingAddress String?
   couponId        String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  buyer    Buyer       @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  vendor   Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  coupon   Coupon?     @relation(fields: [couponId], references: [id], onDelete: SetNull)
-  items    OrderItem[]
-  payments Payment[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  status          String
+  buyer           Buyer       @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  coupon          Coupon?     @relation(fields: [couponId], references: [id])
+  vendor          Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  items           OrderItem[]
+  payments        Payment?
 
   @@index([buyerId])
   @@index([vendorId])
@@ -229,9 +177,8 @@ model OrderItem {
   totalPrice Decimal  @db.Decimal(10, 2)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
 }
@@ -242,34 +189,32 @@ model Payment {
   stripePaymentId  String?  @unique
   stripeCustomerId String?
   amount           Decimal  @db.Decimal(10, 2)
-  status           String
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
-
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status           String
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([stripePaymentId])
 }
 
 model Coupon {
-  id                String   @id @default(uuid())
+  id                String                  @id @default(uuid())
   vendorId          String
   code              String
-  discountType      String
-  discountValue     Decimal  @db.Decimal(10, 2)
-  minPurchaseAmount Decimal? @db.Decimal(10, 2)
-  maxDiscountAmount Decimal? @db.Decimal(10, 2)
+  discountValue     Decimal                 @db.Decimal(10, 2)
+  minPurchaseAmount Decimal?                @db.Decimal(10, 2)
+  maxDiscountAmount Decimal?                @db.Decimal(10, 2)
   validFrom         DateTime
   validUntil        DateTime
   usageLimit        Int?
-  usedCount         Int      @default(0)
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  vendor           Vendor                  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  buyerAssignments CouponBuyerAssignment[]
-  orders           Order[]
+  usedCount         Int                     @default(0)
+  isActive          Boolean                 @default(true)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  discountType      String
+  vendor            Vendor                  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  buyerAssignments  CouponBuyerAssignment[]
+  orders            Order[]
 
   @@unique([vendorId, code])
   @@index([vendorId])
@@ -283,9 +228,8 @@ model CouponBuyerAssignment {
   usedAt    DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-
-  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
-  buyer  Buyer  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  buyer     Buyer     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  coupon    Coupon    @relation(fields: [couponId], references: [id], onDelete: Cascade)
 
   @@unique([couponId, buyerId])
   @@index([buyerId])
@@ -301,11 +245,10 @@ model Message {
   isRead      Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  sender   User    @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver User    @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
-  vendor   Vendor? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  buyer    Buyer?  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  buyer       Buyer?   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  vendor      Vendor?  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@index([senderId])
   @@index([receiverId])
@@ -320,8 +263,7 @@ model Notification {
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
