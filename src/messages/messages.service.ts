@@ -4,7 +4,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from "@nestjs/common";
-import { PrismaService } from "src/prisma/prisma.service";
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateMessageDto } from "./dto/create-message.dto";
 
 @Injectable()
@@ -122,7 +122,7 @@ export class MessagesService {
           },
         },
       },
-      orderBy: { sentAt: "desc" },
+      orderBy: { createdAt: "desc" },
     });
 
     // Group by conversation partner
@@ -178,7 +178,7 @@ export class MessagesService {
           },
         },
       },
-      orderBy: { sentAt: "asc" },
+      orderBy: { createdAt: "asc" },
     });
 
     // Mark messages as read

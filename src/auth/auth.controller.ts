@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
+import { RegisterDto, UserType } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VendorRegisterDto } from './dto/vendor-register.dto';
 import { BuyerRegisterDto } from './dto/buyer-register.dto';
@@ -29,7 +29,7 @@ export class AuthController {
     const registerDto: RegisterDto = {
       email: body.email,
       password: body.password,
-      userType: 'vendor',
+      userType: UserType.VENDOR,
       fullName: body.fullName,
       phone: body.phone,
     };
@@ -47,7 +47,7 @@ export class AuthController {
     const registerDto: RegisterDto = {
       email: body.email,
       password: body.password,
-      userType: 'buyer',
+      userType: UserType.BUYER,
       fullName: body.fullName,
       phone: body.phone,
     };

@@ -95,7 +95,6 @@ export class OrdersService {
     });
 
     // Create order items and update stock
-    const orderItems = [];
     for (const item of vendorItems) {
       const unitPrice = Number(item.priceAtAddition);
       const totalPrice = unitPrice * item.quantity;
@@ -119,8 +118,6 @@ export class OrdersService {
           },
         },
       });
-
-      orderItems.push({ ...item, unitPrice, totalPrice });
     }
 
     // Remove items from cart
@@ -198,9 +195,9 @@ export class OrdersService {
             vendorCode: true,
           },
         },
-        payment: true,
+        payments: true,
       },
-      orderBy: { orderedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -225,9 +222,9 @@ export class OrdersService {
             },
           },
         },
-        payment: true,
+        payments: true,
       },
-      orderBy: { orderedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -246,7 +243,7 @@ export class OrdersService {
           },
         },
         vendor: true,
-        payment: true,
+        payments: true,
       },
     });
 

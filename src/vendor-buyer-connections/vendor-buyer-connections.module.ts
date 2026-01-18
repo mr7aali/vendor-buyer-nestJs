@@ -1,10 +1,7 @@
 import { Module } from "@nestjs/common";
-// import { VendorBuyerConnectionsService } from './vendor-buyer-connections.service';
-// import { VendorBuyerConnectionsController } from './vendor-buyer-connections.controller';
-import { PrismaModule } from "src/prisma/prisma.module.js";
-import { VendorBuyerConnectionsController } from "./vendor-buyer-connections.controller.js";
-import { VendorBuyerConnectionsService } from "./vendor-buyer-connections.service.js";
-// import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '../prisma/prisma.module';
+import { VendorBuyerConnectionsController } from "./vendor-buyer-connections.controller";
+import { VendorBuyerConnectionsService } from "./vendor-buyer-connections.service";
 
 @Module({
   imports: [PrismaModule],

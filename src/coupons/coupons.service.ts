@@ -164,7 +164,7 @@ export class CouponsService {
         coupon: true,
       },
       orderBy: {
-        assignedAt: 'desc',
+        createdAt: 'desc',
       },
     });
   }

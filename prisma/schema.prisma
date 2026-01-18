@@ -13,3 +13,295 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum UserType {
+  vendor
+  buyer
+}
+
+enum OrderStatus {
+  pending
+  processing
+  shipped
+  delivered
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  succeeded
+  failed
+  canceled
+}
+
+enum DiscountType {
+  percentage
+  fixed
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  passwordHash String
+  userType    UserType
+  fullName    String?
+  phone       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendor Vendor?
+  buyer  Buyer?
+
+  sentMessages     Message[]       @relation("SentMessages")
+  receivedMessages Message[]       @relation("ReceivedMessages")
+  notifications    Notification[]
+}
+
+model Vendor {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  vendorCode         String   @unique
+  businessName       String
+  businessDescription String?
+  businessAddress    String?
+  logoUrl            String?
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user                User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connections         VendorBuyerConnection[]
+  categories          Category[]
+  products            Product[]
+  orders              Order[]
+  coupons             Coupon[]
+  messages            Message[]
+}
+
+model Buyer {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  shippingAddress String?
+  city           String?
+  postalCode     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connections        VendorBuyerConnection[]
+  cart               Cart?
+  orders             Order[]
+  couponAssignments  CouponBuyerAssignment[]
+  messages           Message[]
+}
+
+model VendorBuyerConnection {
+  id         String   @id @default(uuid())
+  vendorId   String
+  buyerId    String
+  isActive   Boolean  @default(true)
+  connectedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  buyer  Buyer  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, buyerId])
+  @@index([buyerId])
+  @@index([vendorId])
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  vendorId    String
+  name        String
+  description String?
+  displayOrder Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendor   Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@index([vendorId])
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  vendorId      String
+  categoryId    String
+  name          String
+  description   String?
+  price         Decimal  @db.Decimal(10, 2)
+  stockQuantity Int      @default(0)
+  imageUrl      String?
+  isAvailable   Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  vendor    Vendor     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  category  Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  cartItems CartItem[]
+  orderItems OrderItem[]
+
+  @@index([vendorId])
+  @@index([categoryId])
+}
+
+model Cart {
+  id        String   @id @default(uuid())
+  buyerId   String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  buyer Buyer     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  items CartItem[]
+}
+
+model CartItem {
+  id            String   @id @default(uuid())
+  cartId        String
+  productId     String
+  quantity      Int
+  priceAtAddition Decimal @db.Decimal(10, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  buyerId         String
+  vendorId        String
+  orderNumber     String      @unique
+  subtotal        Decimal     @db.Decimal(10, 2)
+  discountAmount  Decimal     @default(0) @db.Decimal(10, 2)
+  totalAmount     Decimal     @db.Decimal(10, 2)
+  status          OrderStatus @default(pending)
+  shippingAddress String?
+  couponId        String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  buyer    Buyer      @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  vendor   Vendor     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  coupon   Coupon?    @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  items    OrderItem[]
+  payments Payment[]
+
+  @@index([buyerId])
+  @@index([vendorId])
+  @@index([orderNumber])
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  unitPrice Decimal  @db.Decimal(10, 2)
+  totalPrice Decimal @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model Payment {
+  id               String        @id @default(uuid())
+  orderId          String        @unique
+  stripePaymentId  String?       @unique
+  stripeCustomerId String?
+  amount           Decimal       @db.Decimal(10, 2)
+  status           PaymentStatus @default(pending)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([stripePaymentId])
+}
+
+model Coupon {
+  id                String       @id @default(uuid())
+  vendorId          String
+  code              String
+  discountType      DiscountType
+  discountValue     Decimal      @db.Decimal(10, 2)
+  minPurchaseAmount Decimal?     @db.Decimal(10, 2)
+  maxDiscountAmount Decimal?     @db.Decimal(10, 2)
+  validFrom         DateTime
+  validUntil        DateTime
+  usageLimit        Int?
+  usedCount         Int          @default(0)
+  isActive          Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  vendor      Vendor               @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  buyerAssignments CouponBuyerAssignment[]
+  orders      Order[]
+
+  @@unique([vendorId, code])
+  @@index([vendorId])
+}
+
+model CouponBuyerAssignment {
+  id        String   @id @default(uuid())
+  couponId  String
+  buyerId   String
+  isUsed    Boolean  @default(false)
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  buyer  Buyer  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, buyerId])
+  @@index([buyerId])
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  senderId    String
+  receiverId  String
+  vendorId    String?
+  buyerId     String?
+  messageText String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sender   User   @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User   @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  vendor   Vendor? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  buyer    Buyer?  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([vendorId, buyerId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
