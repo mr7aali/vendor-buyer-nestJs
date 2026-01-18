@@ -1,6 +1,7 @@
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { AppModule } from './app.module';
+import { NestFactory } from "@nestjs/core";
+import { ValidationPipe } from "@nestjs/common";
+import { AppModule } from "./app.module";
+import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,6 +12,15 @@ async function bootstrap() {
     credentials: true,
   });
 
+  const config = new DocumentBuilder()
+    .setTitle("QuickMi API")
+    .setDescription("API documentation generated automatically")
+    .setVersion("1.0")
+    .addBearerAuth() // JWT support
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup("api", app, document);
   // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
@@ -24,7 +34,7 @@ async function bootstrap() {
   );
 
   // Set global prefix
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix("api");
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
