@@ -1,3 +1,4 @@
+import { PrismaService } from 'src/prisma/prisma.service.js';
 import {
   Controller,
   Post,
@@ -8,14 +9,22 @@ import {
   UseGuards,
   NotFoundException,
 } from '@nestjs/common';
-import { VendorBuyerConnectionsService } from './vendor-buyer-connections.service';
-import { ConnectVendorDto } from './dto/connect-vendor.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { GetUser } from '../auth/decorators/get-user.decorator';
-import { UserType } from '../auth/dto/register.dto';
-import { PrismaService } from '../prisma/prisma.service';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard.js';
+import { VendorBuyerConnectionsService } from './vendor-buyer-connections.service.js';
+// import { PrismaService } from 'src/prisma/prisma.service.js';
+import { Roles } from 'src/auth/decorators/roles.decorator.js';
+import { UserType } from 'src/auth/dto/register.dto.js';
+import { RolesGuard } from 'src/auth/guards/roles.guard.js';
+import { GetUser } from 'src/auth/decorators/get-user.decorator.js';
+import { ConnectVendorDto } from './dto/connect-vendor.dto.js';
+// import { VendorBuyerConnectionsService } from './vendor-buyer-connections.service';
+// import { ConnectVendorDto } from './dto/connect-vendor.dto';
+// import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+// import { RolesGuard } from '../auth/guards/roles.guard';
+// import { Roles } from '../auth/decorators/roles.decorator';
+// import { GetUser } from '../auth/decorators/get-user.decorator';
+// import { UserType } from '../auth/dto/register.dto';
+// import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('connections')
 @UseGuards(JwtAuthGuard)

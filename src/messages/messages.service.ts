@@ -1,6 +1,11 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateMessageDto } from './dto/create-message.dto';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaService } from "src/prisma/prisma.service";
+import { CreateMessageDto } from "./dto/create-message.dto";
 
 @Injectable()
 export class MessagesService {
@@ -25,18 +30,20 @@ export class MessagesService {
     });
 
     if (!sender || !receiver) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     // Verify that sender and receiver are vendor-buyer pairs
     if (sender.userType === receiver.userType) {
-      throw new BadRequestException('Messages can only be sent between vendors and buyers');
+      throw new BadRequestException(
+        "Messages can only be sent between vendors and buyers",
+      );
     }
 
     let vendorId: string | null = null;
     let buyerId: string | null = null;
 
-    if (sender.userType === 'vendor') {
+    if (sender.userType === "vendor") {
       vendorId = sender.vendor?.id || null;
       buyerId = receiver.buyer?.id || null;
     } else {
@@ -45,7 +52,7 @@ export class MessagesService {
     }
 
     if (!vendorId || !buyerId) {
-      throw new BadRequestException('Invalid vendor-buyer relationship');
+      throw new BadRequestException("Invalid vendor-buyer relationship");
     }
 
     // Verify connection
@@ -59,7 +66,7 @@ export class MessagesService {
     });
 
     if (!connection || !connection.isActive) {
-      throw new ForbiddenException('You are not connected to this user');
+      throw new ForbiddenException("You are not connected to this user");
     }
 
     return this.prisma.message.create({
@@ -95,10 +102,7 @@ export class MessagesService {
     // Get all messages where user is sender or receiver
     const messages = await this.prisma.message.findMany({
       where: {
-        OR: [
-          { senderId: userId },
-          { receiverId: userId },
-        ],
+        OR: [{ senderId: userId }, { receiverId: userId }],
       },
       include: {
         sender: {
@@ -118,15 +122,17 @@ export class MessagesService {
           },
         },
       },
-      orderBy: { sentAt: 'desc' },
+      orderBy: { sentAt: "desc" },
     });
 
     // Group by conversation partner
     const conversations = new Map<string, any>();
-    
+
     for (const message of messages) {
-      const partnerId = message.senderId === userId ? message.receiverId : message.senderId;
-      const partner = message.senderId === userId ? message.receiver : message.sender;
+      const partnerId =
+        message.senderId === userId ? message.receiverId : message.senderId;
+      const partner =
+        message.senderId === userId ? message.receiver : message.sender;
 
       if (!conversations.has(partnerId)) {
         conversations.set(partnerId, {
@@ -172,7 +178,7 @@ export class MessagesService {
           },
         },
       },
-      orderBy: { sentAt: 'asc' },
+      orderBy: { sentAt: "asc" },
     });
 
     // Mark messages as read
@@ -194,11 +200,11 @@ export class MessagesService {
     });
 
     if (!message) {
-      throw new NotFoundException('Message not found');
+      throw new NotFoundException("Message not found");
     }
 
     if (message.receiverId !== userId) {
-      throw new ForbiddenException('You cannot mark this message as read');
+      throw new ForbiddenException("You cannot mark this message as read");
     }
 
     return this.prisma.message.update({

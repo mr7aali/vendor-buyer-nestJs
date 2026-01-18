@@ -3,8 +3,9 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
-} from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+} from "@nestjs/common";
+import { PrismaService } from "src/prisma/prisma.service.js";
+// import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class VendorBuyerConnectionsService {
@@ -17,26 +18,27 @@ export class VendorBuyerConnectionsService {
     });
 
     if (!vendor) {
-      throw new NotFoundException('Vendor not found with this code');
+      throw new NotFoundException("Vendor not found with this code");
     }
 
     if (!vendor.isActive) {
-      throw new BadRequestException('Vendor is not active');
+      throw new BadRequestException("Vendor is not active");
     }
 
     // Check if already connected
-    const existingConnection = await this.prisma.vendorBuyerConnection.findUnique({
-      where: {
-        vendorId_buyerId: {
-          vendorId: vendor.id,
-          buyerId,
+    const existingConnection =
+      await this.prisma.vendorBuyerConnection.findUnique({
+        where: {
+          vendorId_buyerId: {
+            vendorId: vendor.id,
+            buyerId,
+          },
         },
-      },
-    });
+      });
 
     if (existingConnection) {
       if (existingConnection.isActive) {
-        throw new BadRequestException('Already connected to this vendor');
+        throw new BadRequestException("Already connected to this vendor");
       }
       // Reactivate connection
       return this.prisma.vendorBuyerConnection.update({
@@ -90,7 +92,7 @@ export class VendorBuyerConnectionsService {
         },
       },
       orderBy: {
-        connectedAt: 'desc',
+        connectedAt: "desc",
       },
     });
   }
@@ -101,7 +103,7 @@ export class VendorBuyerConnectionsService {
     });
 
     if (!vendor) {
-      throw new NotFoundException('Vendor not found');
+      throw new NotFoundException("Vendor not found");
     }
 
     return this.prisma.vendorBuyerConnection.findMany({
@@ -124,7 +126,7 @@ export class VendorBuyerConnectionsService {
         },
       },
       orderBy: {
-        connectedAt: 'desc',
+        connectedAt: "desc",
       },
     });
   }
@@ -140,7 +142,7 @@ export class VendorBuyerConnectionsService {
     });
 
     if (!connection) {
-      throw new NotFoundException('Connection not found');
+      throw new NotFoundException("Connection not found");
     }
 
     return this.prisma.vendorBuyerConnection.update({
