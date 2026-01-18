@@ -2,16 +2,17 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
-  BadRequestException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { VendorRegisterDto } from './dto/vendor-register.dto';
-import { BuyerRegisterDto } from './dto/buyer-register.dto';
-import { v4 as uuidv4 } from 'uuid';
+  
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { PrismaService } from "../prisma/prisma.service";
+import * as bcrypt from "bcrypt";
+import { RegisterDto, UserType } from "./dto/register.dto";
+import { LoginDto } from "./dto/login.dto";
+import { VendorRegisterDto } from "./dto/vendor-register.dto";
+import { BuyerRegisterDto } from "./dto/buyer-register.dto";
+import { v4 as uuidv4 } from "uuid";
+import { UserRegisterDto } from "./dto/user-create.dto";
 
 @Injectable()
 export class AuthService {
@@ -20,14 +21,17 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(registerDto: RegisterDto, additionalData?: VendorRegisterDto | BuyerRegisterDto) {
+  async register(
+    registerDto: RegisterDto,
+    additionalData?: VendorRegisterDto | BuyerRegisterDto,
+  ) {
     // Check if user already exists
     const existingUser = await this.prisma.user.findUnique({
       where: { email: registerDto.email },
     });
 
     if (existingUser) {
-      throw new ConflictException('User with this email already exists');
+      throw new ConflictException("User with this email already exists");
     }
 
     // Hash password
@@ -39,39 +43,43 @@ export class AuthService {
         email: registerDto.email,
         passwordHash,
         userType: registerDto.userType,
-        fullName: registerDto.fullName,
-        phone: registerDto.phone,
+        // fullName: registerDto.fullName,
+        // phone: registerDto.phone,
       },
     });
 
     // Create vendor or buyer profile
-    if (registerDto.userType === 'vendor' && additionalData) {
+    if (registerDto.userType === "vendor" && additionalData) {
       const vendorData = additionalData as VendorRegisterDto;
       const vendorCode = this.generateVendorCode();
-      await this.prisma.vendor.create({
-        data: {
-          userId: user.id,
-          vendorCode,
-          businessName: vendorData.businessName,
-          businessDescription: vendorData.businessDescription,
-          businessAddress: vendorData.businessAddress,
-          logoUrl: vendorData.logoUrl,
-        },
-      });
-    } else if (registerDto.userType === 'buyer' && additionalData) {
+      // await this.prisma.vendor.create({
+      //   data: {
+      //     userId: user.id,
+      //     vendorCode,
+      //     businessName: vendorData.businessName,
+      //     businessDescription: vendorData.businessDescription,
+      //     businessAddress: vendorData.businessAddress,
+      //     logoUrl: vendorData.logoUrl,
+      //   },
+      // });
+    } else if (registerDto.userType === "buyer" && additionalData) {
       const buyerData = additionalData as BuyerRegisterDto;
-      await this.prisma.buyer.create({
-        data: {
-          userId: user.id,
-          shippingAddress: buyerData.shippingAddress,
-          city: buyerData.city,
-          postalCode: buyerData.postalCode,
-        },
-      });
+      // await this.prisma.buyer.create({
+      //   data: {
+      //     userId: user.id,
+      //     // shippingAddress: buyerData.shippingAddress,
+      //     // city: buyerData.city,
+      //     // postalCode: buyerData.postalCode,
+      //   },
+      // });
     }
 
     // Generate JWT token
-    const payload = { sub: user.id, email: user.email, userType: user.userType };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      userType: user.userType,
+    };
     const accessToken = this.jwtService.sign(payload);
 
     return {
@@ -80,7 +88,50 @@ export class AuthService {
         id: user.id,
         email: user.email,
         userType: user.userType,
-        fullName: user.fullName,
+        // fullName: user.fullName,
+      },
+    };
+  }
+
+  async registerUser(data: UserRegisterDto) {
+    // Check if user already exists 
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException("User with this email already exists");
+    }
+
+    if(data.password !== data.confirmPassword){
+      throw new ConflictException("Password and Confirm Password do not match");
+    }
+    // Hash password
+    const passwordHash = await bcrypt.hash(data.password, 10);
+
+    // Create user
+    const user = await this.prisma.user.create({
+      data: {
+        email: data.email,
+        passwordHash,
+        userType: UserType.USER,
+      },
+    });
+
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      userType: user.userType,
+    };
+    const accessToken = this.jwtService.sign(payload);
+
+    return {
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        userType: user.userType,
       },
     };
   }
@@ -91,16 +142,23 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(
+      loginDto.password,
+      user.passwordHash,
+    );
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
-    const payload = { sub: user.id, email: user.email, userType: user.userType };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      userType: user.userType,
+    };
     const accessToken = this.jwtService.sign(payload);
 
     return {
@@ -109,7 +167,6 @@ export class AuthService {
         id: user.id,
         email: user.email,
         userType: user.userType,
-        fullName: user.fullName,
       },
     };
   }

@@ -4,7 +4,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from "@nestjs/common";
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from "../prisma/prisma.service";
 import { CreateMessageDto } from "./dto/create-message.dto";
 
 @Injectable()
@@ -82,7 +82,7 @@ export class MessagesService {
           select: {
             id: true,
             email: true,
-            fullName: true,
+            // fullName: true,
             userType: true,
           },
         },
@@ -90,7 +90,7 @@ export class MessagesService {
           select: {
             id: true,
             email: true,
-            fullName: true,
+            // fullName: true,
             userType: true,
           },
         },
@@ -109,7 +109,7 @@ export class MessagesService {
           select: {
             id: true,
             email: true,
-            fullName: true,
+            // fullName: true,
             userType: true,
           },
         },
@@ -117,7 +117,7 @@ export class MessagesService {
           select: {
             id: true,
             email: true,
-            fullName: true,
+
             userType: true,
           },
         },
@@ -165,7 +165,7 @@ export class MessagesService {
           select: {
             id: true,
             email: true,
-            fullName: true,
+
             userType: true,
           },
         },
@@ -173,7 +173,7 @@ export class MessagesService {
           select: {
             id: true,
             email: true,
-            fullName: true,
+
             userType: true,
           },
         },

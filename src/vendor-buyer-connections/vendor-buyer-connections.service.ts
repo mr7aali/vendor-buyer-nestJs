@@ -4,7 +4,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from "@nestjs/common";
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class VendorBuyerConnectionsService {
@@ -117,8 +117,6 @@ export class VendorBuyerConnectionsService {
               select: {
                 id: true,
                 email: true,
-                fullName: true,
-                phone: true,
               },
             },
           },

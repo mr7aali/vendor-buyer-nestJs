@@ -1,8 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderStatusDto, OrderStatus } from './dto/update-order-status.dto';
-import { v4 as uuidv4 } from 'uuid';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateOrderDto } from "./dto/create-order.dto";
+import {
+  UpdateOrderStatusDto,
+  OrderStatus,
+} from "./dto/update-order-status.dto";
+import { v4 as uuidv4 } from "uuid";
 
 @Injectable()
 export class OrdersService {
@@ -20,7 +28,7 @@ export class OrdersService {
     });
 
     if (!connection || !connection.isActive) {
-      throw new ForbiddenException('You are not connected to this vendor');
+      throw new ForbiddenException("You are not connected to this vendor");
     }
 
     // Get cart
@@ -40,7 +48,7 @@ export class OrdersService {
     });
 
     if (!cart || cart.items.length === 0) {
-      throw new BadRequestException('Cart is empty');
+      throw new BadRequestException("Cart is empty");
     }
 
     // Filter items by vendor
@@ -49,14 +57,16 @@ export class OrdersService {
     );
 
     if (vendorItems.length === 0) {
-      throw new BadRequestException('No items from this vendor in cart');
+      throw new BadRequestException("No items from this vendor in cart");
     }
 
     // Calculate totals
     let subtotal = 0;
     for (const item of vendorItems) {
       if (item.product.stockQuantity < item.quantity) {
-        throw new BadRequestException(`Insufficient stock for ${item.product.name}`);
+        throw new BadRequestException(
+          `Insufficient stock for ${item.product.name}`,
+        );
       }
       subtotal += Number(item.priceAtAddition) * item.quantity;
     }
@@ -197,7 +207,7 @@ export class OrdersService {
         },
         payments: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -216,15 +226,15 @@ export class OrdersService {
               select: {
                 id: true,
                 email: true,
-                fullName: true,
-                phone: true,
+                // // fullName: true,
+                // phone: true,
               },
             },
           },
         },
         payments: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -248,39 +258,43 @@ export class OrdersService {
     });
 
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException("Order not found");
     }
 
-    if (userType === 'buyer') {
+    if (userType === "buyer") {
       const buyer = await this.prisma.buyer.findUnique({
         where: { userId },
       });
       if (order.buyerId !== buyer?.id) {
-        throw new ForbiddenException('You do not have access to this order');
+        throw new ForbiddenException("You do not have access to this order");
       }
-    } else if (userType === 'vendor') {
+    } else if (userType === "vendor") {
       const vendor = await this.prisma.vendor.findUnique({
         where: { userId },
       });
       if (order.vendorId !== vendor?.id) {
-        throw new ForbiddenException('You do not have access to this order');
+        throw new ForbiddenException("You do not have access to this order");
       }
     }
 
     return order;
   }
 
-  async updateStatus(id: string, vendorId: string, updateOrderStatusDto: UpdateOrderStatusDto) {
+  async updateStatus(
+    id: string,
+    vendorId: string,
+    updateOrderStatusDto: UpdateOrderStatusDto,
+  ) {
     const order = await this.prisma.order.findUnique({
       where: { id },
     });
 
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException("Order not found");
     }
 
     if (order.vendorId !== vendorId) {
-      throw new ForbiddenException('You do not have access to this order');
+      throw new ForbiddenException("You do not have access to this order");
     }
 
     return this.prisma.order.update({
@@ -300,7 +314,9 @@ export class OrdersService {
 
   private generateOrderNumber(): string {
     const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    const random = Math.floor(Math.random() * 10000)
+      .toString()
+      .padStart(4, "0");
     return `ORD-${timestamp}-${random}`;
   }
 
@@ -344,12 +360,15 @@ export class OrdersService {
     }
 
     // Check minimum purchase amount
-    if (coupon.minPurchaseAmount && subtotal < Number(coupon.minPurchaseAmount)) {
+    if (
+      coupon.minPurchaseAmount &&
+      subtotal < Number(coupon.minPurchaseAmount)
+    ) {
       return null;
     }
 
     let discount = 0;
-    if (coupon.discountType === 'percentage') {
+    if (coupon.discountType === "percentage") {
       discount = (subtotal * Number(coupon.discountValue)) / 100;
     } else {
       discount = Number(coupon.discountValue);

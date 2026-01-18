@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "UserType" AS ENUM ('vendor', 'buyer');
+CREATE TYPE "UserType" AS ENUM ('vendor', 'buyer', 'user');
 
 -- CreateEnum
 CREATE TYPE "OrderStatus" AS ENUM ('pending', 'processing', 'shipped', 'delivered', 'cancelled');
@@ -10,14 +10,15 @@ CREATE TYPE "PaymentStatus" AS ENUM ('pending', 'succeeded', 'failed', 'canceled
 -- CreateEnum
 CREATE TYPE "DiscountType" AS ENUM ('percentage', 'fixed');
 
+-- CreateEnum
+CREATE TYPE "Gender" AS ENUM ('Female', 'Male', 'Other');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
     "userType" "UserType" NOT NULL,
-    "fullName" TEXT,
-    "phone" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -25,11 +26,33 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
+CREATE TABLE "Buyer" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "vendorCode" TEXT NOT NULL,
+    "fulllName" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
+    "gender" "Gender" NOT NULL,
+    "nidFontPhotoUrl" TEXT NOT NULL,
+    "nidBackPhotoUrl" TEXT NOT NULL,
+    "profilePhotoUrl" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Buyer_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Vendor" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "vendorCode" TEXT NOT NULL,
-    "businessName" TEXT NOT NULL,
+    "fulllName" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
+    "gender" TEXT NOT NULL,
+    "businessName" TEXT,
     "businessDescription" TEXT,
     "businessAddress" TEXT,
     "logoUrl" TEXT,
@@ -38,19 +61,6 @@ CREATE TABLE "Vendor" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Vendor_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "Buyer" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "shippingAddress" TEXT,
-    "city" TEXT,
-    "postalCode" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "Buyer_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -230,13 +240,16 @@ CREATE TABLE "Notification" (
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Buyer_userId_key" ON "Buyer"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Buyer_vendorCode_key" ON "Buyer"("vendorCode");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Vendor_userId_key" ON "Vendor"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Vendor_vendorCode_key" ON "Vendor"("vendorCode");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Buyer_userId_key" ON "Buyer"("userId");
 
 -- CreateIndex
 CREATE INDEX "VendorBuyerConnection_buyerId_idx" ON "VendorBuyerConnection"("buyerId");
@@ -314,10 +327,10 @@ CREATE INDEX "Message_vendorId_buyerId_idx" ON "Message"("vendorId", "buyerId");
 CREATE INDEX "Notification_userId_idx" ON "Notification"("userId");
 
 -- AddForeignKey
-ALTER TABLE "Vendor" ADD CONSTRAINT "Vendor_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Buyer" ADD CONSTRAINT "Buyer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Buyer" ADD CONSTRAINT "Buyer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Vendor" ADD CONSTRAINT "Vendor_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "VendorBuyerConnection" ADD CONSTRAINT "VendorBuyerConnection_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
