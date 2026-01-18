@@ -25,12 +25,13 @@ model User {
 }
 
 model Buyer {
-  id                String                  @id @default(uuid())
-  userId            String                  @unique
-  vendorCode        String                  @unique
+  id     String @id @default(uuid())
+  userId String @unique
+
   fulllName         String
-  email             String
+  email             String                  @unique
   phone             String
+  nidNumber         String
   nidFontPhotoUrl   String
   nidBackPhotoUrl   String
   profilePhotoUrl   String
@@ -46,27 +47,36 @@ model Buyer {
 }
 
 model Vendor {
-  id                  String                  @id @default(uuid())
-  userId              String                  @unique
-  vendorCode          String                  @unique
+  id                  String  @id @default(uuid())
+  userId              String  @unique
+  vendorCode          String  @unique
   fulllName           String
-  email               String
   phone               String
+  email               String  @unique
+  address             String
+  storename           String
+  storeDescription    String
   gender              String
   businessName        String?
   businessDescription String?
-  businessAddress     String?
-  logoUrl             String?
-  isActive            Boolean                 @default(true)
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
-  categories          Category[]
-  coupons             Coupon[]
-  messages            Message[]
-  orders              Order[]
-  products            Product[]
-  user                User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  connections         VendorBuyerConnection[]
+  logoUrl             String
+  nationalIdNumber    String
+  nidFontPhotoUrl     String
+  nidBackPhotoUrl     String
+  bussinessRegNumber  String
+  bussinessIdPhotoUrl String
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categories  Category[]
+  coupons     Coupon[]
+  messages    Message[]
+  orders      Order[]
+  products    Product[]
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connections VendorBuyerConnection[]
 }
 
 model VendorBuyerConnection {

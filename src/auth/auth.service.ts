@@ -8,10 +8,11 @@ import { PrismaService } from "../prisma/prisma.service";
 import * as bcrypt from "bcrypt";
 import { RegisterDto, UserType } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
-import { VendorRegisterDto } from "./dto/vendor-register.dto";
-import { BuyerRegisterDto } from "./dto/buyer-register.dto";
+
 import { v4 as uuidv4 } from "uuid";
 import { UserRegisterDto } from "./dto/user-create.dto";
+import { BuyerRegisterFullDto } from "./dto/buyer-register-full.dto";
+import { VendorRegisterDto } from "./dto/buyer-register.dto";
 
 @Injectable()
 export class AuthService {
@@ -19,78 +20,6 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
   ) {}
-
-  async register(
-    registerDto: RegisterDto,
-    additionalData?: VendorRegisterDto | BuyerRegisterDto,
-  ) {
-    // Check if user already exists
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: registerDto.email },
-    });
-
-    if (existingUser) {
-      throw new ConflictException("User with this email already exists");
-    }
-
-    // Hash password
-    const passwordHash = await bcrypt.hash(registerDto.password, 10);
-
-    // Create user
-    const user = await this.prisma.user.create({
-      data: {
-        email: registerDto.email,
-        passwordHash,
-        userType: registerDto.userType,
-        // fullName: registerDto.fullName,
-        // phone: registerDto.phone,
-      },
-    });
-
-    // Create vendor or buyer profile
-    if (registerDto.userType === "vendor" && additionalData) {
-      const vendorData = additionalData as VendorRegisterDto;
-      const vendorCode = this.generateVendorCode();
-      // await this.prisma.vendor.create({
-      //   data: {
-      //     userId: user.id,
-      //     vendorCode,
-      //     businessName: vendorData.businessName,
-      //     businessDescription: vendorData.businessDescription,
-      //     businessAddress: vendorData.businessAddress,
-      //     logoUrl: vendorData.logoUrl,
-      //   },
-      // });
-    } else if (registerDto.userType === "buyer" && additionalData) {
-      const buyerData = additionalData as BuyerRegisterDto;
-      // await this.prisma.buyer.create({
-      //   data: {
-      //     userId: user.id,
-      //     // shippingAddress: buyerData.shippingAddress,
-      //     // city: buyerData.city,
-      //     // postalCode: buyerData.postalCode,
-      //   },
-      // });
-    }
-
-    // Generate JWT token
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      userType: user.userType,
-    };
-    const accessToken = this.jwtService.sign(payload);
-
-    return {
-      accessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        userType: user.userType,
-        // fullName: user.fullName,
-      },
-    };
-  }
 
   async registerUser(data: UserRegisterDto) {
     // Check if user already exists
@@ -134,7 +63,78 @@ export class AuthService {
       },
     };
   }
+  async registerBuyer({
+    data,
+    userId,
+  }: {
+    data: BuyerRegisterFullDto;
+    userId: string;
+  }) {
+    // Check if user already exists
 
+    const existingUser = await this.prisma.buyer.findUnique({
+      where: { email: data.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException("Buyer with this email already exists");
+    }
+
+    // Create user
+    const user = await this.prisma.buyer.create({
+      data: {
+        userId: userId,
+        fulllName: data.fulllName,
+        email: data.email,
+        phone: data.phone,
+        nidNumber: data.nidNumber,
+        nidFontPhotoUrl: data.nidFontPhotoUrl,
+        nidBackPhotoUrl: data.nidBackPhotoUrl,
+        profilePhotoUrl: data.profilePhotoUrl,
+        gender: data.gender,
+      },
+    });
+    return user;
+  }
+  async registerVendor({
+    data,
+    userId,
+  }: {
+    data: VendorRegisterDto;
+    userId: string;
+  }) {
+    // Check if user already exists
+
+    const existingUser = await this.prisma.vendor.findUnique({
+      where: { email: data.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException("Vendor with this email already exists");
+    }
+
+    // Create user
+    const user = await this.prisma.vendor.create({
+      data: {
+        userId: userId,
+        fulllName: data.fulllName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        storename: data.storename,
+        storeDescription: data.storeDescription,
+        nidFontPhotoUrl: data.nidFontPhotoUrl,
+        nidBackPhotoUrl: data.nidBackPhotoUrl,
+        logoUrl: data.logoUrl,
+        nationalIdNumber: data.nationalIdNumber,
+        bussinessRegNumber: data.bussinessRegNumber,
+        gender: data.gender,
+        vendorCode: this.generateVendorCode(),
+        bussinessIdPhotoUrl: data.bussinessIdPhotoUrl || "",
+      },
+    });
+    return user;
+  }
   async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: loginDto.email },

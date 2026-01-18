@@ -1,16 +1,56 @@
-import { IsString, IsOptional } from "class-validator";
-// import { ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsBoolean,
+  IsEmail,
+  IsOptional,
+  IsString,
+  MinLength,
+} from "class-validator";
 
-export class BuyerRegisterDto {
+export class VendorRegisterDto {
   @IsString()
-  @IsOptional()
-  shippingAddress?: string;
+  fulllName: string;
 
   @IsString()
-  @IsOptional()
-  city?: string;
+  phone: string;
+
+  @IsEmail()
+  email: string;
 
   @IsString()
+  address: string;
+
+  @IsString()
+  storename: string;
+
+  @IsString()
+  storeDescription: string;
+
+  @IsString()
+  gender: string;
+
   @IsOptional()
-  postalCode?: string;
+  @IsString()
+  businessName?: string;
+
+  @IsOptional()
+  @IsString()
+  businessDescription?: string;
+
+  @IsString()
+  logoUrl: string;
+
+  @IsString()
+  nationalIdNumber: string;
+
+  @IsString()
+  nidFontPhotoUrl: string;
+
+  @IsString()
+  nidBackPhotoUrl: string;
+
+  @IsString()
+  bussinessRegNumber: string;
+
+  @IsString()
+  bussinessIdPhotoUrl: string;
 }
