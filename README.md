@@ -1,6 +1,11 @@
 # E-commerce Admin Dashboard Backend
 
 A comprehensive NestJS backend application for an e-commerce platform with vendor-buyer connections, product management, shopping cart, orders, Stripe payments, coupons, messaging, and notifications.
+#cloudinary documentation
+
+```
+https://cloudinary.com/blog/guest_post/signed-image-uploading-to-cloudinary-with-angular-and-nestjs
+```
 
 ## Features
 
@@ -34,18 +39,21 @@ A comprehensive NestJS backend application for an e-commerce platform with vendo
 ## Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd dashboard-backend
 ```
 
 2. Install dependencies:
+
 ```bash
 yarn install
 ```
 
 3. Set up environment variables:
-Create a `.env` file in the root directory:
+   Create a `.env` file in the root directory:
+
 ```env
 DATABASE_URL="postgresql://postgres:1234@localhost:5432/your_db?schema=public"
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
@@ -55,11 +63,13 @@ PORT=3000
 ```
 
 4. Generate Prisma Client:
+
 ```bash
 yarn prisma:generate
 ```
 
 5. Run database migrations:
+
 ```bash
 yarn prisma:migrate
 ```
@@ -67,11 +77,13 @@ yarn prisma:migrate
 ## Running the Application
 
 Development mode:
+
 ```bash
 yarn start:dev
 ```
 
 Production mode:
+
 ```bash
 yarn build
 yarn start:prod
@@ -102,17 +114,20 @@ The application uses Prisma with PostgreSQL. Key entities include:
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/register/vendor` - Register as vendor
 - `POST /api/auth/register/buyer` - Register as buyer
 - `POST /api/auth/login` - Login
 - `GET /api/auth/me` - Get current user (protected)
 
 ### Connections
+
 - `POST /api/connections/connect` - Connect to vendor using code (buyer only)
 - `GET /api/connections/my-connections` - Get all connections
 - `DELETE /api/connections/disconnect/:vendorId` - Disconnect from vendor (buyer only)
 
 ### Categories
+
 - `POST /api/categories` - Create category (vendor only)
 - `GET /api/categories/vendor/:vendorId` - Get categories for vendor
 - `GET /api/categories/:id` - Get category by ID
@@ -120,6 +135,7 @@ The application uses Prisma with PostgreSQL. Key entities include:
 - `DELETE /api/categories/:id` - Delete category (vendor only)
 
 ### Products
+
 - `POST /api/products` - Create product (vendor only)
 - `GET /api/products/vendor/:vendorId` - Get products for vendor
 - `GET /api/products/:id` - Get product by ID
@@ -127,6 +143,7 @@ The application uses Prisma with PostgreSQL. Key entities include:
 - `DELETE /api/products/:id` - Delete product (vendor only)
 
 ### Cart
+
 - `GET /api/cart` - Get cart (buyer only)
 - `POST /api/cart/add` - Add item to cart (buyer only)
 - `PATCH /api/cart/items/:itemId` - Update cart item (buyer only)
@@ -134,17 +151,20 @@ The application uses Prisma with PostgreSQL. Key entities include:
 - `DELETE /api/cart/clear` - Clear cart (buyer only)
 
 ### Orders
+
 - `POST /api/orders` - Create order (buyer only)
 - `GET /api/orders` - Get all orders (buyer/vendor)
 - `GET /api/orders/:id` - Get order by ID
 - `PATCH /api/orders/:id/status` - Update order status (vendor only)
 
 ### Payments
+
 - `POST /api/payments/create-intent` - Create payment intent (buyer only)
 - `GET /api/payments/order/:orderId` - Get payment by order ID
 - `POST /api/payments/webhook` - Stripe webhook endpoint
 
 ### Coupons
+
 - `POST /api/coupons` - Create coupon (vendor only)
 - `GET /api/coupons` - Get coupons (vendor/buyer)
 - `GET /api/coupons/:id` - Get coupon by ID (vendor only)
@@ -152,12 +172,14 @@ The application uses Prisma with PostgreSQL. Key entities include:
 - `PATCH /api/coupons/:id/deactivate` - Deactivate coupon (vendor only)
 
 ### Messages
+
 - `POST /api/messages` - Send message
 - `GET /api/messages/conversations` - Get all conversations
 - `GET /api/messages/conversation/:partnerId` - Get messages with partner
 - `PATCH /api/messages/:id/read` - Mark message as read
 
 ### Notifications
+
 - `POST /api/notifications` - Create notification
 - `GET /api/notifications` - Get all notifications
 - `GET /api/notifications/unread` - Get unread notifications
@@ -176,6 +198,7 @@ Authorization: Bearer <your-jwt-token>
 ## Role-Based Access Control
 
 Some endpoints are restricted to specific user types:
+
 - **Vendor only**: Creating/updating categories, products, coupons, order status updates
 - **Buyer only**: Cart operations, order creation, connecting to vendors
 
@@ -226,16 +249,19 @@ src/
 ## Development
 
 Run in development mode with hot-reload:
+
 ```bash
 yarn start:dev
 ```
 
 Run tests:
+
 ```bash
 yarn test
 ```
 
 Lint code:
+
 ```bash
 yarn lint
 ```
