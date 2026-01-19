@@ -17,7 +17,16 @@ import { UserRegisterDto } from "./dto/user-create.dto";
 import { BuyerRegisterFullDto } from "./dto/buyer-register-full.dto";
 import { VendorRegisterDto } from "./dto/vendor-register.dto";
 import { FileFieldsInterceptor } from "@nestjs/platform-express";
-// import { VendorRegisterDto } from "./dto/buyer-register.dto";
+import {
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  VerifyOtpDto,
+} from "./dto/forgot-password";
+// import {
+//   ForgotPasswordDto,
+//   VerifyOtpDto,
+//   ResetPasswordDto,
+// } from "./dto/forgot-password.dto";
 
 @Controller("auth")
 export class AuthController {
@@ -60,13 +69,7 @@ export class AuthController {
       files: files,
     });
   }
-  // async registerVendor(@Body() body: VendorRegisterDto, @GetUser() user: any) {
-  //   const userId = user.id as string;
-  //   return this.authService.registerVendor({
-  //     data: body,
-  //     userId: userId,
-  //   });
-  // }
+
   @Post("register/buyer")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
@@ -102,24 +105,43 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
+  // Forgot Password Endpoints
+  @Post("forgot-password")
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(forgotPasswordDto);
+  }
+
+  @Post("verify-otp")
+  @HttpCode(HttpStatus.OK)
+  async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+    return this.authService.verifyOtp(verifyOtpDto);
+  }
+
+  @Post("reset-password")
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return this.authService.resetPassword(resetPasswordDto);
+  }
+
   @Get("me")
   @UseGuards(JwtAuthGuard)
   async getProfile(@GetUser() user: any) {
     return user;
   }
+
   @Get("all-vendor")
   async getAllVendor() {
     return this.authService.getAllVendor();
   }
+
   @Get("all-buyer")
   async getAllBuyer() {
     return this.authService.getAllBuyer();
   }
+
   @Get("user")
   async getAlluser() {
     return this.authService.getAlluser();
   }
-}
-
-{
 }

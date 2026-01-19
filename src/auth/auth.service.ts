@@ -4,31 +4,52 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  NotFoundException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "../prisma/prisma.service";
 import * as bcrypt from "bcrypt";
 import { UserType } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
-
 import { v4 as uuidv4 } from "uuid";
 import { UserRegisterDto } from "./dto/user-create.dto";
 import { BuyerRegisterFullDto } from "./dto/buyer-register-full.dto";
 import { VendorRegisterDto } from "./dto/vendor-register.dto";
 import { CloudinaryService } from "src/cloudinary/cloudinary.service";
-// import { VendorRegisterDto } from "./dto/buyer-register.dto";
+import { EmailService } from "./email.service";
+import {
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  VerifyOtpDto,
+} from "./dto/forgot-password";
+// import {
+//   ForgotPasswordDto,
+//   VerifyOtpDto,
+//   ResetPasswordDto,
+// } from "./dto/forgot-password.dto";
+
+// In-memory storage for OTPs (for production, use Redis)
+interface OtpData {
+  otp: string;
+  expiresAt: Date;
+  verified: boolean;
+}
 
 @Injectable()
 export class AuthService {
+  private otpStorage = new Map<string, OtpData>();
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private readonly cloudinaryService: CloudinaryService,
-  ) {}
+    private readonly emailService: EmailService,
+  ) {
+    // Clean up expired OTPs every 5 minutes
+    setInterval(() => this.cleanupExpiredOtps(), 5 * 60 * 1000);
+  }
 
   async registerUser(data: UserRegisterDto) {
-    // Check if user already exists
-
     const existingUser = await this.prisma.user.findUnique({
       where: { email: data.email },
     });
@@ -40,10 +61,9 @@ export class AuthService {
     if (data.password !== data.confirmPassword) {
       throw new ConflictException("Password and Confirm Password do not match");
     }
-    // Hash password
+
     const passwordHash = await bcrypt.hash(data.password, 10);
 
-    // Create user
     const user = await this.prisma.user.create({
       data: {
         email: data.email,
@@ -68,6 +88,7 @@ export class AuthService {
       },
     };
   }
+
   async registerBuyer({
     data,
     userId,
@@ -81,7 +102,6 @@ export class AuthService {
       profilePhotoUrl?: Express.Multer.File[];
     };
   }) {
-    // Validate required files
     if (
       !files?.nidFontPhotoUrl ||
       !files?.nidBackPhotoUrl ||
@@ -91,8 +111,6 @@ export class AuthService {
         "Missing required files: nidFontPhotoUrl, nidBackPhotoUrl, profilePhotoUrl",
       );
     }
-
-    // Check if user already exists
 
     const existingUser = await this.prisma.buyer.findUnique({
       where: { email: data.email },
@@ -142,7 +160,6 @@ export class AuthService {
       businessId?: Express.Multer.File[];
     };
   }) {
-    // Validate required files
     if (
       !files?.logo ||
       !files?.nidFront ||
@@ -154,7 +171,6 @@ export class AuthService {
       );
     }
 
-    // Check if vendor already exists
     const existingVendor = await this.prisma.vendor.findUnique({
       where: { email: data.email },
     });
@@ -163,7 +179,6 @@ export class AuthService {
       throw new ConflictException("Vendor with this email already exists");
     }
 
-    // Check if user is already a vendor
     const existingUserVendor = await this.prisma.vendor.findUnique({
       where: { userId: userId },
     });
@@ -173,7 +188,6 @@ export class AuthService {
     }
 
     try {
-      // Upload images to Cloudinary
       const [logoResult, nidFrontResult, nidBackResult, businessIdResult] =
         await Promise.all([
           this.cloudinaryService.uploadFile(files.logo[0]),
@@ -184,7 +198,6 @@ export class AuthService {
             : Promise.resolve(null),
         ]);
 
-      // Create vendor
       const vendor = await this.prisma.vendor.create({
         data: {
           userId: userId,
@@ -205,7 +218,6 @@ export class AuthService {
         },
       });
 
-      // Remove sensitive data before returning
       return {
         id: vendor.id,
         fulllName: vendor.fulllName,
@@ -215,7 +227,6 @@ export class AuthService {
         message: "Vendor registered successfully",
       };
     } catch (error) {
-      // Handle upload errors
       throw new BadRequestException(
         `Failed to upload images: ${error.message}`,
       );
@@ -257,6 +268,114 @@ export class AuthService {
     };
   }
 
+  // Forgot Password Methods
+  async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: forgotPasswordDto.email },
+    });
+
+    if (!user) {
+      throw new NotFoundException("User with this email does not exist");
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store OTP with 10-minute expiration
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    this.otpStorage.set(forgotPasswordDto.email, {
+      otp,
+      expiresAt,
+      verified: false,
+    });
+
+    // Send OTP via email
+    await this.emailService.sendOtpEmail(forgotPasswordDto.email, otp);
+
+    return {
+      message: "OTP sent to your email successfully",
+      email: forgotPasswordDto.email,
+    };
+  }
+
+  async verifyOtp(verifyOtpDto: VerifyOtpDto) {
+    const otpData = this.otpStorage.get(verifyOtpDto.email);
+
+    if (!otpData) {
+      throw new BadRequestException("No OTP found for this email");
+    }
+
+    if (new Date() > otpData.expiresAt) {
+      this.otpStorage.delete(verifyOtpDto.email);
+      throw new BadRequestException("OTP has expired");
+    }
+
+    if (otpData.otp !== verifyOtpDto.otp) {
+      throw new BadRequestException("Invalid OTP");
+    }
+
+    // Mark OTP as verified
+    otpData.verified = true;
+    this.otpStorage.set(verifyOtpDto.email, otpData);
+
+    return {
+      message: "OTP verified successfully",
+      verified: true,
+    };
+  }
+
+  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+    const otpData = this.otpStorage.get(resetPasswordDto.email);
+
+    if (!otpData) {
+      throw new BadRequestException("No OTP found for this email");
+    }
+
+    if (new Date() > otpData.expiresAt) {
+      this.otpStorage.delete(resetPasswordDto.email);
+      throw new BadRequestException("OTP has expired");
+    }
+
+    if (otpData.otp !== resetPasswordDto.otp) {
+      throw new BadRequestException("Invalid OTP");
+    }
+
+    if (!otpData.verified) {
+      throw new BadRequestException(
+        "OTP not verified. Please verify OTP first",
+      );
+    }
+
+    if (resetPasswordDto.newPassword !== resetPasswordDto.confirmPassword) {
+      throw new BadRequestException("Passwords do not match");
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(resetPasswordDto.newPassword, 10);
+
+    // Update user password
+    await this.prisma.user.update({
+      where: { email: resetPasswordDto.email },
+      data: { passwordHash },
+    });
+
+    // Remove OTP from storage
+    this.otpStorage.delete(resetPasswordDto.email);
+
+    return {
+      message: "Password reset successfully",
+    };
+  }
+
+  private cleanupExpiredOtps() {
+    const now = new Date();
+    for (const [email, otpData] of this.otpStorage.entries()) {
+      if (now > otpData.expiresAt) {
+        this.otpStorage.delete(email);
+      }
+    }
+  }
+
   private generateVendorCode(): string {
     const randomPart = uuidv4().substring(0, 8).toUpperCase();
     return `VENDOR-${randomPart}`;
@@ -265,9 +384,11 @@ export class AuthService {
   async getAllVendor() {
     return await this.prisma.vendor.findMany({});
   }
+
   async getAllBuyer() {
     return await this.prisma.buyer.findMany({});
   }
+
   async getAlluser() {
     return await this.prisma.user.findMany({
       include: {

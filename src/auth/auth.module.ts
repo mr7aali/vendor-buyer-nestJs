@@ -6,8 +6,9 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { JwtStrategy } from "./strategies/jwt.strategy";
-// import { Cloudinary } from "src/cloudinary/cloudinary/cloudinary";
 import { CloudinaryModule } from "src/cloudinary/cloudinary.module";
+import { EmailService } from "./email.service";
+// import { EmailService } from "./email.service.ts";
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { CloudinaryModule } from "src/cloudinary/cloudinary.module";
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, EmailService],
   exports: [AuthService],
 })
 export class AuthModule {}
