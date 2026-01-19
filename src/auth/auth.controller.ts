@@ -25,6 +25,7 @@ export class AuthController {
     const data = body;
     return this.authService.registerUser(data);
   }
+
   @Post("register/vendor")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
@@ -61,5 +62,17 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async getProfile(@GetUser() user: any) {
     return user;
+  }
+  @Get("all-vendor")
+  async getAllVendor() {
+    return this.authService.getAllVendor();
+  }
+  @Get("all-buyer")
+  async getAllBuyer() {
+    return this.authService.getAllBuyer();
+  }
+  @Get("user")
+  async getAlluser() {
+    return this.authService.getAlluser();
   }
 }

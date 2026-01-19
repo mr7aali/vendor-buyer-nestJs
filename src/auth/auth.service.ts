@@ -175,4 +175,14 @@ export class AuthService {
     const randomPart = uuidv4().substring(0, 8).toUpperCase();
     return `VENDOR-${randomPart}`;
   }
+
+  async getAllVendor() {
+    return await this.prisma.vendor.findMany({});
+  }
+  async getAllBuyer() {
+    return await this.prisma.buyer.findMany({});
+  }
+  async getAlluser() {
+    return await this.prisma.user.findMany({});
+  }
 }
