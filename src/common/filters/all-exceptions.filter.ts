@@ -79,6 +79,26 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     }
 
+    // ================= JS RUNTIME ERRORS =================
+    else if (exception instanceof TypeError) {
+      status = HttpStatus.BAD_REQUEST;
+      message = "Invalid or missing request data";
+      messages = [exception.message];
+    } else if (exception instanceof ReferenceError) {
+      status = HttpStatus.INTERNAL_SERVER_ERROR;
+      message = "Server configuration error";
+    }
+
+    // ================= UNKNOWN ERRORS =================
+    else if (exception instanceof Error) {
+      message = exception.message;
+    }
+
+    this.logger.error(
+      `${request.method} ${request.url}`,
+      exception instanceof Error ? exception.stack : "",
+    );
+
     const errorResponse = {
       success: false,
       statusCode: status,

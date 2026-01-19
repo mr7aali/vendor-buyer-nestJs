@@ -1,37 +1,42 @@
-// import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
-// import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+// vendor-register.dto.ts
+import { IsString, IsEmail, IsOptional } from "class-validator";
 
-// export class VendorRegisterDto {
-//   @ApiProperty({
-//     description: 'Business name',
-//     example: 'ABC Store',
-//   })
-//   @IsString()
-//   @IsNotEmpty()
-//   businessName: string;
+export class VendorRegisterDto {
+  @IsString()
+  fulllName: string;
 
-//   @ApiPropertyOptional({
-//     description: 'Business description',
-//     example: 'A premium store for quality products',
-//   })
-//   @IsString()
-//   @IsOptional()
-//   businessDescription?: string;
+  @IsString()
+  phone: string;
 
-//   @ApiPropertyOptional({
-//     description: 'Business address',
-//     example: '123 Main St, City, State, ZIP',
-//   })
-//   @IsString()
-//   @IsOptional()
-//   businessAddress?: string;
+  @IsEmail()
+  email: string;
 
-//   @ApiPropertyOptional({
-//     description: 'Logo URL',
-//     example: 'https://example.com/logo.png',
-//     format: 'uri',
-//   })
-//   @IsString()
-//   @IsOptional()
-//   logoUrl?: string;
-// }
+  @IsString()
+  address: string;
+
+  @IsString()
+  storename: string;
+
+  @IsString()
+  storeDescription: string;
+
+  @IsString()
+  gender: string;
+
+  @IsOptional()
+  @IsString()
+  businessName?: string;
+
+  @IsOptional()
+  @IsString()
+  businessDescription?: string;
+
+  @IsString()
+  nationalIdNumber: string;
+
+  @IsString()
+  bussinessRegNumber: string;
+
+  // Remove the URL fields - we'll upload files instead
+  // logoUrl, nidFontPhotoUrl, nidBackPhotoUrl, bussinessIdPhotoUrl will be uploaded
+}

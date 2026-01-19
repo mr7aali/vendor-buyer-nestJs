@@ -6,11 +6,14 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { JwtStrategy } from "./strategies/jwt.strategy";
+// import { Cloudinary } from "src/cloudinary/cloudinary/cloudinary";
+import { CloudinaryModule } from "src/cloudinary/cloudinary.module";
 
 @Module({
   imports: [
     PrismaModule,
     PassportModule,
+    CloudinaryModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

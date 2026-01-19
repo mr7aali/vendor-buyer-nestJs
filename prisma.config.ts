@@ -9,6 +9,7 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: "postgresql://postgres:1234@localhost:5432/newdb?schema=public",
+    // url: "postgresql://postgres:1234@localhost:5432/newdb?schema=public",
+    url: process.env.DATABASE_URL,
   },
 });
