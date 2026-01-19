@@ -1,12 +1,9 @@
-import { IsEmail, IsString, MinLength } from "class-validator";
+// buyer-register-full.dto.ts
+import { IsEmail, IsString } from "class-validator";
 
 export class BuyerRegisterFullDto {
   @IsEmail()
   email: string;
-
-  @IsString()
-  @MinLength(8)
-  password: string;
 
   @IsString()
   fullName: string;
@@ -18,16 +15,9 @@ export class BuyerRegisterFullDto {
   gender: string;
 
   @IsString()
-  nidFontPhotoUrl: string;
-
-  @IsString()
-  nidBackPhotoUrl: string;
-
-  @IsString()
-  profilePhotoUrl: string;
-
-  @IsString()
-  fulllName: string;
-  @IsString()
   nidNumber: string;
+
+  // Remove these - we'll upload files instead:
+  // nidFontPhotoUrl, nidBackPhotoUrl, profilePhotoUrl
+  // password - user is already authenticated via JWT
 }

@@ -1,3 +1,4 @@
+import { Buyer } from "./../../generated/prisma/browser";
 import {
   Injectable,
   UnauthorizedException,
@@ -70,10 +71,27 @@ export class AuthService {
   async registerBuyer({
     data,
     userId,
+    files,
   }: {
     data: BuyerRegisterFullDto;
     userId: string;
+    files: {
+      nidFontPhotoUrl?: Express.Multer.File[];
+      nidBackPhotoUrl?: Express.Multer.File[];
+      profilePhotoUrl?: Express.Multer.File[];
+    };
   }) {
+    // Validate required files
+    if (
+      !files?.nidFontPhotoUrl ||
+      !files?.nidBackPhotoUrl ||
+      !files?.profilePhotoUrl
+    ) {
+      throw new BadRequestException(
+        "Missing required files: nidFontPhotoUrl, nidBackPhotoUrl, profilePhotoUrl",
+      );
+    }
+
     // Check if user already exists
 
     const existingUser = await this.prisma.buyer.findUnique({
@@ -84,61 +102,32 @@ export class AuthService {
       throw new ConflictException("Buyer with this email already exists");
     }
 
-    // Create user
-    const user = await this.prisma.buyer.create({
-      data: {
-        userId: userId,
-        fulllName: data.fulllName,
-        email: data.email,
-        phone: data.phone,
-        nidNumber: data.nidNumber,
-        nidFontPhotoUrl: data.nidFontPhotoUrl,
-        nidBackPhotoUrl: data.nidBackPhotoUrl,
-        profilePhotoUrl: data.profilePhotoUrl,
-        gender: data.gender,
-      },
-    });
-    return user;
+    try {
+      const [profileImage, nidFontUrl, nidBackUrl] = await Promise.all([
+        this.cloudinaryService.uploadFile(files.profilePhotoUrl[0]),
+        this.cloudinaryService.uploadFile(files.nidFontPhotoUrl[0]),
+        this.cloudinaryService.uploadFile(files.nidBackPhotoUrl[0]),
+      ]);
+      return await this.prisma.buyer.create({
+        data: {
+          userId: userId,
+          fulllName: data.fullName,
+          email: data.email,
+          phone: data.phone,
+          nidNumber: data.nidNumber,
+          nidFontPhotoUrl: nidFontUrl.secure_url,
+          nidBackPhotoUrl: nidBackUrl.secure_url,
+          profilePhotoUrl: profileImage.secure_url,
+          gender: data.gender,
+        },
+      });
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to upload images: ${error.message}`,
+      );
+    }
   }
-  // async registerVendor({
-  //   data,
-  //   userId,
-  // }: {
-  //   data: VendorRegisterDto;
-  //   userId: string;
-  // }) {
-  //   // Check if user already exists
 
-  //   const existingUser = await this.prisma.vendor.findUnique({
-  //     where: { email: data.email },
-  //   });
-
-  //   if (existingUser) {
-  //     throw new ConflictException("Vendor with this email already exists");
-  //   }
-
-  //   // Create user
-  //   const user = await this.prisma.vendor.create({
-  //     data: {
-  //       userId: userId,
-  //       fulllName: data.fulllName,
-  //       email: data.email,
-  //       phone: data.phone,
-  //       address: data.address,
-  //       storename: data.storename,
-  //       storeDescription: data.storeDescription,
-  //       nidFontPhotoUrl: data.nidFontPhotoUrl,
-  //       nidBackPhotoUrl: data.nidBackPhotoUrl,
-  //       logoUrl: data.logoUrl,
-  //       nationalIdNumber: data.nationalIdNumber,
-  //       bussinessRegNumber: data.bussinessRegNumber,
-  //       gender: data.gender,
-  //       vendorCode: this.generateVendorCode(),
-  //       bussinessIdPhotoUrl: data.bussinessIdPhotoUrl || "",
-  //     },
-  //   });
-  //   return user;
-  // }
   async registerVendor({
     data,
     userId,
@@ -233,12 +222,6 @@ export class AuthService {
     }
   }
 
-  // private generateVendorCode(): string {
-  //   const prefix = "VND";
-  //   const timestamp = Date.now().toString(36).toUpperCase();
-  //   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-  //   return `${prefix}-${timestamp}-${random}`;
-  // }
   async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: loginDto.email },
@@ -275,7 +258,6 @@ export class AuthService {
   }
 
   private generateVendorCode(): string {
-    // Generate a unique vendor code (e.g., VENDOR-XXXX)
     const randomPart = uuidv4().substring(0, 8).toUpperCase();
     return `VENDOR-${randomPart}`;
   }
@@ -287,6 +269,15 @@ export class AuthService {
     return await this.prisma.buyer.findMany({});
   }
   async getAlluser() {
-    return await this.prisma.user.findMany({});
+    return await this.prisma.user.findMany({
+      include: {
+        vendor: true,
+        buyer: true,
+        notifications: true,
+        _count: true,
+        receivedMessages: true,
+        sentMessages: true,
+      },
+    });
   }
 }

@@ -70,15 +70,29 @@ export class AuthController {
   @Post("register/buyer")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: "nidFontPhotoUrl", maxCount: 1 },
+      { name: "nidBackPhotoUrl", maxCount: 1 },
+      { name: "profilePhotoUrl", maxCount: 1 },
+    ]),
+  )
   async registerBuyer(
     @Body() body: BuyerRegisterFullDto,
     @GetUser() user: any,
+    @UploadedFiles()
+    files: {
+      nidFontPhotoUrl?: Express.Multer.File[];
+      nidBackPhotoUrl?: Express.Multer.File[];
+      profilePhotoUrl?: Express.Multer.File[];
+    },
   ) {
     const userId = user.id as string;
 
     return this.authService.registerBuyer({
       data: body,
       userId: userId,
+      files,
     });
   }
 
@@ -105,4 +119,7 @@ export class AuthController {
   async getAlluser() {
     return this.authService.getAlluser();
   }
+}
+
+{
 }
