@@ -14,6 +14,7 @@ import { NotificationsModule } from "./notifications/notifications.module.js";
 import { AppController } from "./app.controller.js";
 import { AppService } from "./app.service.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { PrismaModule } from "./prisma/prisma.module.js";
     CouponsModule,
     MessagesModule,
     NotificationsModule,
+    CloudinaryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

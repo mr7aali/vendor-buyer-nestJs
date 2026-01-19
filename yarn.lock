@@ -1452,6 +1452,13 @@
   resolved "https://registry.npmjs.org/@types/ms/-/ms-2.1.0.tgz"
   integrity sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==
 
+"@types/multer@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.npmjs.org/@types/multer/-/multer-2.0.0.tgz"
+  integrity sha512-C3Z9v9Evij2yST3RSBktxP9STm6OdMc5uR1xF1SGr98uv8dUlAL2hqwrZ3GVB3uyMyiegnscEK6PGtYvNrjTjw==
+  dependencies:
+    "@types/express" "*"
+
 "@types/node@*", "@types/node@^22.10.7", "@types/node@>=16", "@types/node@>=18":
   version "22.19.7"
   resolved "https://registry.npmjs.org/@types/node/-/node-22.19.7.tgz"
@@ -2326,6 +2333,13 @@ clone@^1.0.2:
   version "1.0.4"
   resolved "https://registry.npmjs.org/clone/-/clone-1.0.4.tgz"
   integrity sha512-JQHZ2QMW6l3aH/j6xCqQThY/9OH4D/9ls34cgkUBiEeocRTU04tHfKPBsUK1PqZCUQM7GiA0IIXJSuXHI64Kbg==
+
+cloudinary@^2.9.0:
+  version "2.9.0"
+  resolved "https://registry.npmjs.org/cloudinary/-/cloudinary-2.9.0.tgz"
+  integrity sha512-F3iKMOy4y0zy0bi5JBp94SC7HY7i/ImfTPSUV07iJmRzH1Iz8WavFfOlJTR1zvYM/xKGoiGZ3my/zy64In0IQQ==
+  dependencies:
+    lodash "^4.17.21"
 
 co@^4.6.0:
   version "4.6.0"
@@ -5180,6 +5194,11 @@ std-env@3.9.0:
   version "3.9.0"
   resolved "https://registry.npmjs.org/std-env/-/std-env-3.9.0.tgz"
   integrity sha512-UGvjygr6F6tpH7o2qyqR6QYpwraIjKSdtzyBdyytFOHmPZY917kwdwLG0RbOjWOnKmnm3PeHjaoLLMie7kPLQw==
+
+streamifier@^0.1.1:
+  version "0.1.1"
+  resolved "https://registry.npmjs.org/streamifier/-/streamifier-0.1.1.tgz"
+  integrity sha512-zDgl+muIlWzXNsXeyUfOk9dChMjlpkq0DRsxujtYPgyJ676yQ8jEm6zzaaWHFDg5BNcLuif0eD2MTyJdZqXpdg==
 
 streamsearch@^1.1.0:
   version "1.1.0"

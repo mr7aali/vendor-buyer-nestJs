@@ -14,7 +14,6 @@ import { GetUser } from "./decorators/get-user.decorator";
 import { UserRegisterDto } from "./dto/user-create.dto";
 import { BuyerRegisterFullDto } from "./dto/buyer-register-full.dto";
 import { VendorRegisterDto } from "./dto/buyer-register.dto";
-// import { VendorRegisterDto } from "./dto/vendor-register.dto";
 
 @Controller("auth")
 export class AuthController {
