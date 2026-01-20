@@ -32,12 +32,15 @@ import {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  // ==================== USER REGISTRATION ====================
+
   @Post("register")
   @HttpCode(HttpStatus.CREATED)
   async registerUser(@Body() body: UserRegisterDto) {
-    const data = body;
-    return this.authService.registerUser(data);
+    return this.authService.registerUser(body);
   }
+
+  // ==================== VENDOR REGISTRATION ====================
 
   @Post("register/vendor")
   @UseGuards(JwtAuthGuard)
@@ -62,13 +65,14 @@ export class AuthController {
     @GetUser() user: any,
   ) {
     const userId = user.id as string;
-
     return this.authService.registerVendor({
       data: body,
       userId: userId,
       files: files,
     });
   }
+
+  // ==================== BUYER REGISTRATION ====================
 
   @Post("register/buyer")
   @UseGuards(JwtAuthGuard)
@@ -91,7 +95,6 @@ export class AuthController {
     },
   ) {
     const userId = user.id as string;
-
     return this.authService.registerBuyer({
       data: body,
       userId: userId,
@@ -99,30 +102,47 @@ export class AuthController {
     });
   }
 
+  // ==================== LOGIN ====================
+
   @Post("login")
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
-  // Forgot Password Endpoints
+  // ==================== FORGOT PASSWORD FLOW ====================
+
+  /**
+   * Step 1: Request OTP for password reset
+   * Send OTP to user's email
+   */
   @Post("forgot-password")
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.forgotPassword(forgotPasswordDto);
   }
 
+  /**
+   * Step 2: Verify OTP sent to email
+   * Optional but recommended step before resetting password
+   */
   @Post("verify-otp")
   @HttpCode(HttpStatus.OK)
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
     return this.authService.verifyOtp(verifyOtpDto);
   }
 
+  /**
+   * Step 3: Reset password with verified OTP
+   * User must provide email, OTP, new password and confirm password
+   */
   @Post("reset-password")
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
   }
+
+  // ==================== PROFILE & USERS ====================
 
   @Get("me")
   @UseGuards(JwtAuthGuard)

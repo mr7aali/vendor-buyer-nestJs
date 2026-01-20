@@ -8,6 +8,7 @@ datasource db {
   provider = "postgresql"
 }
 
+// ------------------------------completed part start-------------------------
 model User {
   id               String         @id @default(uuid())
   email            String         @unique
@@ -29,7 +30,7 @@ model Buyer {
   userId String @unique
 
   fulllName         String
-  email             String                  @unique
+  // email             String                  @unique
   phone             String
   nidNumber         String
   nidFontPhotoUrl   String
@@ -52,7 +53,7 @@ model Vendor {
   vendorCode          String  @unique
   fulllName           String
   phone               String
-  email               String  @unique
+  // email               String  @unique
   address             String
   storename           String
   storeDescription    String
@@ -79,6 +80,7 @@ model Vendor {
   connections VendorBuyerConnection[]
 }
 
+// ------------------------------completed part End-------------------------
 model VendorBuyerConnection {
   id          String   @id @default(uuid())
   vendorId    String
@@ -99,6 +101,7 @@ model Category {
   id           String    @id @default(uuid())
   vendorId     String
   name         String
+  // thumbnail    String
   description  String?
   displayOrder Int       @default(0)
   createdAt    DateTime  @default(now())

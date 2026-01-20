@@ -8,7 +8,6 @@ import { AuthService } from "./auth.service";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { CloudinaryModule } from "src/cloudinary/cloudinary.module";
 import { EmailService } from "./email.service";
-// import { EmailService } from "./email.service.ts";
 
 @Module({
   imports: [

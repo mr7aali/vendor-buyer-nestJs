@@ -1,4 +1,3 @@
-import { Buyer } from "./../../generated/prisma/browser";
 import {
   Injectable,
   UnauthorizedException,
@@ -24,29 +23,20 @@ import {
 } from "./dto/forgot-password";
 // import {
 //   ForgotPasswordDto,
-//   VerifyOtpDto,
 //   ResetPasswordDto,
+//   VerifyOtpDto,
 // } from "./dto/forgot-password.dto";
-
-// In-memory storage for OTPs (for production, use Redis)
-interface OtpData {
-  otp: string;
-  expiresAt: Date;
-  verified: boolean;
-}
 
 @Injectable()
 export class AuthService {
-  private otpStorage = new Map<string, OtpData>();
-
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly emailService: EmailService,
   ) {
-    // Clean up expired OTPs every 5 minutes
-    setInterval(() => this.cleanupExpiredOtps(), 5 * 60 * 1000);
+    // Clean up expired OTPs every hour
+    setInterval(() => this.cleanupExpiredOtps(), 60 * 60 * 1000);
   }
 
   async registerUser(data: UserRegisterDto) {
@@ -113,7 +103,7 @@ export class AuthService {
     }
 
     const existingUser = await this.prisma.buyer.findUnique({
-      where: { email: data.email },
+      where: { userId: userId },
     });
 
     if (existingUser) {
@@ -121,27 +111,38 @@ export class AuthService {
     }
 
     try {
+      // Upload all images in parallel
       const [profileImage, nidFontUrl, nidBackUrl] = await Promise.all([
         this.cloudinaryService.uploadFile(files.profilePhotoUrl[0]),
         this.cloudinaryService.uploadFile(files.nidFontPhotoUrl[0]),
         this.cloudinaryService.uploadFile(files.nidBackPhotoUrl[0]),
       ]);
-      return await this.prisma.buyer.create({
-        data: {
-          userId: userId,
-          fulllName: data.fullName,
-          email: data.email,
-          phone: data.phone,
-          nidNumber: data.nidNumber,
-          nidFontPhotoUrl: nidFontUrl.secure_url,
-          nidBackPhotoUrl: nidBackUrl.secure_url,
-          profilePhotoUrl: profileImage.secure_url,
-          gender: data.gender,
-        },
+
+      // Use a transaction for both operations
+      await this.prisma.$transaction(async (prisma) => {
+        const r = await prisma.buyer.create({
+          data: {
+            userId: userId,
+            fulllName: data.fullName,
+            // email: data.email,
+            phone: data.phone,
+            nidNumber: data.nidNumber,
+            nidFontPhotoUrl: nidFontUrl.secure_url,
+            nidBackPhotoUrl: nidBackUrl.secure_url,
+            profilePhotoUrl: profileImage.secure_url,
+            gender: data.gender,
+          },
+        });
+
+        await prisma.user.update({
+          where: { id: userId },
+          data: { userType: UserType.BUYER },
+        });
+        return r;
       });
     } catch (error) {
       throw new BadRequestException(
-        `Failed to upload images: ${error.message}`,
+        `Failed to register buyer: ${error.message}`,
       );
     }
   }
@@ -172,7 +173,7 @@ export class AuthService {
     }
 
     const existingVendor = await this.prisma.vendor.findUnique({
-      where: { email: data.email },
+      where: { userId: userId },
     });
 
     if (existingVendor) {
@@ -197,35 +198,44 @@ export class AuthService {
             ? this.cloudinaryService.uploadFile(files.businessId[0])
             : Promise.resolve(null),
         ]);
+      await this.prisma.$transaction(async () => {
+        const vendor = await this.prisma.vendor.create({
+          data: {
+            userId: userId,
+            fulllName: data.fulllName,
+            // email: data.email,
+            phone: data.phone,
+            address: data.address,
+            storename: data.storename,
+            storeDescription: data.storeDescription,
+            logoUrl: logoResult.secure_url,
+            nidFontPhotoUrl: nidFrontResult.secure_url,
+            nidBackPhotoUrl: nidBackResult.secure_url,
+            nationalIdNumber: data.nationalIdNumber,
+            bussinessRegNumber: data.bussinessRegNumber,
+            gender: data.gender,
+            vendorCode: this.generateVendorCode(),
+            bussinessIdPhotoUrl: businessIdResult?.secure_url || "",
+          },
+        });
+        await this.prisma.user.update({
+          where: {
+            id: userId,
+          },
+          data: {
+            userType: UserType.VENDOR,
+          },
+        });
 
-      const vendor = await this.prisma.vendor.create({
-        data: {
-          userId: userId,
-          fulllName: data.fulllName,
-          email: data.email,
-          phone: data.phone,
-          address: data.address,
-          storename: data.storename,
-          storeDescription: data.storeDescription,
-          logoUrl: logoResult.secure_url,
-          nidFontPhotoUrl: nidFrontResult.secure_url,
-          nidBackPhotoUrl: nidBackResult.secure_url,
-          nationalIdNumber: data.nationalIdNumber,
-          bussinessRegNumber: data.bussinessRegNumber,
-          gender: data.gender,
-          vendorCode: this.generateVendorCode(),
-          bussinessIdPhotoUrl: businessIdResult?.secure_url || "",
-        },
+        return {
+          id: vendor.id,
+          fulllName: vendor.fulllName,
+          // email: vendor.email,
+          storename: vendor.storename,
+          vendorCode: vendor.vendorCode,
+          message: "Vendor registered successfully",
+        };
       });
-
-      return {
-        id: vendor.id,
-        fulllName: vendor.fulllName,
-        email: vendor.email,
-        storename: vendor.storename,
-        vendorCode: vendor.vendorCode,
-        message: "Vendor registered successfully",
-      };
     } catch (error) {
       throw new BadRequestException(
         `Failed to upload images: ${error.message}`,
@@ -268,8 +278,10 @@ export class AuthService {
     };
   }
 
-  // Forgot Password Methods
+  // ==================== FORGOT PASSWORD METHODS ====================
+
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    // Check if user exists
     const user = await this.prisma.user.findUnique({
       where: { email: forgotPasswordDto.email },
     });
@@ -278,74 +290,108 @@ export class AuthService {
       throw new NotFoundException("User with this email does not exist");
     }
 
+    // Delete any existing OTPs for this email
+    await this.prisma.passwordResetOtp.deleteMany({
+      where: { email: forgotPasswordDto.email },
+    });
+
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Store OTP with 10-minute expiration
+    // Store OTP in database with 10-minute expiration
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    this.otpStorage.set(forgotPasswordDto.email, {
-      otp,
-      expiresAt,
-      verified: false,
+    await this.prisma.passwordResetOtp.create({
+      data: {
+        email: forgotPasswordDto.email,
+        otp,
+        expiresAt,
+        verified: false,
+      },
     });
 
     // Send OTP via email
     await this.emailService.sendOtpEmail(forgotPasswordDto.email, otp);
 
     return {
+      success: true,
       message: "OTP sent to your email successfully",
       email: forgotPasswordDto.email,
     };
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
-    const otpData = this.otpStorage.get(verifyOtpDto.email);
+    // Find the most recent OTP for this email
+    const otpRecord = await this.prisma.passwordResetOtp.findFirst({
+      where: {
+        email: verifyOtpDto.email,
+        otp: verifyOtpDto.otp,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
-    if (!otpData) {
-      throw new BadRequestException("No OTP found for this email");
-    }
-
-    if (new Date() > otpData.expiresAt) {
-      this.otpStorage.delete(verifyOtpDto.email);
-      throw new BadRequestException("OTP has expired");
-    }
-
-    if (otpData.otp !== verifyOtpDto.otp) {
+    if (!otpRecord) {
       throw new BadRequestException("Invalid OTP");
     }
 
+    // Check if OTP has expired
+    if (new Date() > otpRecord.expiresAt) {
+      await this.prisma.passwordResetOtp.delete({
+        where: { id: otpRecord.id },
+      });
+      throw new BadRequestException(
+        "OTP has expired. Please request a new one",
+      );
+    }
+
     // Mark OTP as verified
-    otpData.verified = true;
-    this.otpStorage.set(verifyOtpDto.email, otpData);
+    await this.prisma.passwordResetOtp.update({
+      where: { id: otpRecord.id },
+      data: { verified: true },
+    });
 
     return {
+      success: true,
       message: "OTP verified successfully",
       verified: true,
     };
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
-    const otpData = this.otpStorage.get(resetPasswordDto.email);
+    // Find the most recent OTP for this email
+    const otpRecord = await this.prisma.passwordResetOtp.findFirst({
+      where: {
+        email: resetPasswordDto.email,
+        otp: resetPasswordDto.otp,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
-    if (!otpData) {
-      throw new BadRequestException("No OTP found for this email");
-    }
-
-    if (new Date() > otpData.expiresAt) {
-      this.otpStorage.delete(resetPasswordDto.email);
-      throw new BadRequestException("OTP has expired");
-    }
-
-    if (otpData.otp !== resetPasswordDto.otp) {
+    if (!otpRecord) {
       throw new BadRequestException("Invalid OTP");
     }
 
-    if (!otpData.verified) {
+    // Check if OTP has expired
+    if (new Date() > otpRecord.expiresAt) {
+      await this.prisma.passwordResetOtp.delete({
+        where: { id: otpRecord.id },
+      });
+      throw new BadRequestException(
+        "OTP has expired. Please request a new one",
+      );
+    }
+
+    // Check if OTP was verified
+    if (!otpRecord.verified) {
       throw new BadRequestException(
         "OTP not verified. Please verify OTP first",
       );
     }
 
+    // Validate password match
     if (resetPasswordDto.newPassword !== resetPasswordDto.confirmPassword) {
       throw new BadRequestException("Passwords do not match");
     }
@@ -359,22 +405,37 @@ export class AuthService {
       data: { passwordHash },
     });
 
-    // Remove OTP from storage
-    this.otpStorage.delete(resetPasswordDto.email);
+    // Delete all OTPs for this email
+    await this.prisma.passwordResetOtp.deleteMany({
+      where: { email: resetPasswordDto.email },
+    });
 
     return {
-      message: "Password reset successfully",
+      success: true,
+      message:
+        "Password reset successfully. You can now login with your new password",
     };
   }
 
-  private cleanupExpiredOtps() {
-    const now = new Date();
-    for (const [email, otpData] of this.otpStorage.entries()) {
-      if (now > otpData.expiresAt) {
-        this.otpStorage.delete(email);
+  // Clean up expired OTPs (runs automatically every hour)
+  private async cleanupExpiredOtps() {
+    try {
+      const result = await this.prisma.passwordResetOtp.deleteMany({
+        where: {
+          expiresAt: {
+            lt: new Date(),
+          },
+        },
+      });
+      if (result.count > 0) {
+        console.log(`Cleaned up ${result.count} expired OTPs`);
       }
+    } catch (error) {
+      console.error("Error cleaning up expired OTPs:", error);
     }
   }
+
+  // ==================== OTHER METHODS ====================
 
   private generateVendorCode(): string {
     const randomPart = uuidv4().substring(0, 8).toUpperCase();
