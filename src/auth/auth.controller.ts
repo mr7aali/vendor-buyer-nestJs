@@ -109,6 +109,11 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
+  @Post("refresh")
+  @HttpCode(HttpStatus.OK)
+  async refresh(@Body("refreshToken") refreshToken: string) {
+    return this.authService.refreshTokens(refreshToken);
+  }
 
   // ==================== FORGOT PASSWORD FLOW ====================
 

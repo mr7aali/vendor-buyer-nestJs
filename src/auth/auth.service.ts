@@ -21,6 +21,7 @@ import {
   ResetPasswordDto,
   VerifyOtpDto,
 } from "./dto/forgot-password";
+import { ConfigService } from "@nestjs/config";
 // import {
 //   ForgotPasswordDto,
 //   ResetPasswordDto,
@@ -34,6 +35,7 @@ export class AuthService {
     private jwtService: JwtService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly emailService: EmailService,
+    private configService: ConfigService,
   ) {
     // Clean up expired OTPs every hour
     setInterval(() => this.cleanupExpiredOtps(), 60 * 60 * 1000);
@@ -53,7 +55,6 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(data.password, 10);
-
     const user = await this.prisma.user.create({
       data: {
         email: data.email,
@@ -260,22 +261,104 @@ export class AuthService {
     if (!isPasswordValid) {
       throw new UnauthorizedException("Invalid credentials");
     }
-
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      userType: user.userType,
-    };
-    const accessToken = this.jwtService.sign(payload);
+    const { accessToken, refreshToken } = await this.generateTokens(user);
+    await this.storeRefreshToken(user.id, refreshToken);
+    // const payload = {
+    //   sub: user.id,
+    //   email: user.email,
+    //   userType: user.userType,
+    // };
+    // const accessToken = this.jwtService.sign(payload);
 
     return {
       accessToken,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
         userType: user.userType,
       },
     };
+  }
+
+  private async generateTokens(user: any) {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      userType: user.userType,
+    };
+
+    const accessToken = this.jwtService.sign(payload, {
+      secret: this.configService.get("JWT_ACCESS_SECRET") || "bangladesh_1971",
+      expiresIn: "15m",
+    });
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.get("JWT_REFRESH_SECRET"),
+      expiresIn: "7d",
+    });
+    return { accessToken, refreshToken };
+  }
+  private async storeRefreshToken(userId: string, refreshToken: string) {
+    const tokenHash = await bcrypt.hash(refreshToken, 10);
+
+    await this.prisma.refreshToken.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+  }
+  async refreshTokens(refreshToken: string) {
+    let payload;
+    if (!refreshToken) {
+      throw new NotFoundException("refreshToken not found.");
+    }
+    try {
+      payload = this.jwtService.verify(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET,
+      });
+    } catch {
+      throw new UnauthorizedException("Invalid refresh token");
+    }
+
+    const tokens = await this.prisma.refreshToken.findMany({
+      where: {
+        userId: payload.sub,
+        revoked: false,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    const validToken = await Promise.any(
+      tokens.map(async (t) =>
+        (await bcrypt.compare(refreshToken, t.tokenHash)) ? t : null,
+      ),
+    ).catch(() => null);
+
+    if (!validToken) {
+      throw new UnauthorizedException("Refresh token revoked");
+    }
+
+    // ROTATION: revoke old token
+    await this.prisma.refreshToken.update({
+      where: { id: validToken.id },
+      data: { revoked: true },
+    });
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
+
+    if (!user) {
+      throw new NotFoundException("User not found.");
+    }
+
+    const newTokens = await this.generateTokens(user);
+    await this.storeRefreshToken(user.id, newTokens.refreshToken);
+
+    return newTokens;
   }
 
   // ==================== FORGOT PASSWORD METHODS ====================

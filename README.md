@@ -56,7 +56,7 @@ yarn install
 
 ```env
 DATABASE_URL="postgresql://postgres:1234@localhost:5432/your_db?schema=public"
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_ACCESS_SECRET=your-super-secret-jwt-key-change-this-in-production
 STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
 STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 PORT=3000

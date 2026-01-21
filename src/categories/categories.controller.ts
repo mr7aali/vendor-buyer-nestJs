@@ -31,17 +31,6 @@ export class CategoriesController {
     private readonly categoriesService: CategoriesService,
     private readonly prisma: PrismaService,
   ) {}
-  // @ApiOperation({
-  //   summary: "Create a new category",
-  //   description: "Vendor only: Create a new category for organizing products",
-  // })
-  // @ApiResponse({ status: 201, description: "Category successfully created" })
-  // @ApiResponse({
-  //   status: 403,
-  //   description: "Forbidden - Vendor access required",
-  // })
-  // @ApiResponse({ status: 404, description: "Vendor profile not found" })
-  // @ApiBody({ type: CreateCategoryDto })
   @Post()
   @Roles(UserType.VENDOR)
   @UseGuards(RolesGuard)
@@ -54,31 +43,12 @@ export class CategoriesController {
       where: { userId: user.id },
     });
     if (!vendor) {
-      throw new NotFoundException("Vendor profile not found");
+      throw new NotFoundException("Vendor profile not found.");
     }
     return this.categoriesService.create(vendor.id, createCategoryDto);
   }
 
   @Get("vendor/:vendorId")
-  // @ApiOperation({
-  //   summary: "Get categories for a vendor",
-  //   description:
-  //     "Get all categories for a specific vendor. Buyers can only see categories from connected vendors.",
-  // })
-  // @ApiParam({
-  //   name: "vendorId",
-  //   description: "Vendor ID",
-  //   example: "uuid-here",
-  // })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: "Categories retrieved successfully",
-  // })
-  // @ApiResponse({
-  //   status: 403,
-  //   description: "Forbidden - Buyer not connected to vendor",
-  // })
-  // @ApiResponse({ status: 404, description: "Vendor not found" })
   async findAllForVendor(
     @Param("vendorId") vendorId: string,
     @GetUser() user: any,
@@ -102,19 +72,12 @@ export class CategoriesController {
     }
   }
 
+  @Get("all")
+  async findAll() {
+    return this.categoriesService.findAll();
+  }
+
   @Get(":id")
-  // @ApiOperation({
-  //   summary: "Get category by ID",
-  //   description:
-  //     "Get a specific category with its details. Buyers can only access categories from connected vendors.",
-  // })
-  // @ApiParam({ name: "id", description: "Category ID", example: "uuid-here" })
-  // @ApiResponse({ status: 200, description: "Category retrieved successfully" })
-  // @ApiResponse({
-  //   status: 403,
-  //   description: "Forbidden - No access to this category",
-  // })
-  // @ApiResponse({ status: 404, description: "Category not found" })
   async findOne(@Param("id") id: string, @GetUser() user: any) {
     let vendorId: string;
     if (user.userType === "vendor") {
@@ -149,18 +112,6 @@ export class CategoriesController {
   @Patch(":id")
   @Roles(UserType.VENDOR)
   @UseGuards(RolesGuard)
-  // @ApiOperation({
-  //   summary: "Update a category",
-  //   description: "Vendor only: Update category information",
-  // })
-  // @ApiParam({ name: "id", description: "Category ID", example: "uuid-here" })
-  // @ApiResponse({ status: 200, description: "Category successfully updated" })
-  // @ApiResponse({
-  //   status: 403,
-  //   description: "Forbidden - Vendor access required",
-  // })
-  // @ApiResponse({ status: 404, description: "Category or vendor not found" })
-  // @ApiBody({ type: UpdateCategoryDto })
   async update(
     @Param("id") id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
@@ -179,18 +130,6 @@ export class CategoriesController {
   @Roles(UserType.VENDOR)
   @UseGuards(RolesGuard)
   @HttpCode(HttpStatus.OK)
-  // @ApiOperation({
-  //   summary: "Delete a category",
-  //   description:
-  //     "Vendor only: Delete a category. Products in this category will remain but lose category association.",
-  // })
-  // @ApiParam({ name: "id", description: "Category ID", example: "uuid-here" })
-  // @ApiResponse({ status: 200, description: "Category successfully deleted" })
-  // @ApiResponse({
-  //   status: 403,
-  //   description: "Forbidden - Vendor access required",
-  // })
-  // @ApiResponse({ status: 404, description: "Category or vendor not found" })
   async remove(@Param("id") id: string, @GetUser() user: any) {
     const vendor = await this.prisma.vendor.findUnique({
       where: { userId: user.id },

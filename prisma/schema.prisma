@@ -21,8 +21,19 @@ model User {
   sentMessages     Message[]      @relation("SentMessages")
   notifications    Notification[]
   vendor           Vendor?
+  refreshTokens    RefreshToken[]
 
   @@map("user")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  revoked   Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model Buyer {
@@ -101,7 +112,7 @@ model Category {
   id           String    @id @default(uuid())
   vendorId     String
   name         String
-  // thumbnail    String
+  thumbnail    String
   description  String?
   displayOrder Int       @default(0)
   createdAt    DateTime  @default(now())
