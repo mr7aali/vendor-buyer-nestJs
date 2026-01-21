@@ -89,16 +89,92 @@ export class CategoriesService {
     return category;
   }
 
-  async update(
-    id: string,
-    vendorId: string,
-    updateCategoryDto: UpdateCategoryDto,
-  ) {
+  // async update(
+  //   id: string,
+  //   vendorId: string,
+  //   updateCategoryDto: UpdateCategoryDto,
+  // ) {
+  //   const category = await this.findOne(id, vendorId);
+  //   return this.prisma.category.update({
+  //     where: { id },
+  //     data: updateCategoryDto,
+  //   });
+  // }
+  async update({
+    id,
+    vendorId,
+    updateCategoryDto,
+    files,
+  }: {
+    id: string;
+    vendorId: string;
+    updateCategoryDto: UpdateCategoryDto;
+    files?: {
+      catImage?: Express.Multer.File[];
+    };
+  }) {
+    // Find and verify ownership
     const category = await this.findOne(id, vendorId);
-    return this.prisma.category.update({
+
+    // Check if name is being updated and if it conflicts
+    if (updateCategoryDto.name && updateCategoryDto.name !== category.name) {
+      const isExist = await this.prisma.category.findFirst({
+        where: {
+          name: updateCategoryDto.name,
+          id: { not: id }, // Exclude current category
+        },
+      });
+
+      if (isExist) {
+        throw new ConflictException(
+          `Category with name '${updateCategoryDto.name}' already exists`,
+        );
+      }
+    }
+
+    let newThumbnailUrl: string | undefined;
+    console.log(files?.catImage && files.catImage.length > 0);
+    // If new image is uploaded
+    if (files?.catImage && files.catImage.length > 0) {
+      try {
+        // Step 1: Upload new image to Cloudinary
+        const catImageRes = await this.cloudinaryService.uploadFile(
+          files.catImage[0],
+        );
+        newThumbnailUrl = catImageRes.secure_url;
+        console.log(newThumbnailUrl);
+        // Step 2: Delete old image from Cloudinary (if exists)
+        if (category.thumbnail) {
+          try {
+            await this.cloudinaryService.deleteFileByUrl(category.thumbnail);
+          } catch (deleteError) {
+            // Log error but don't fail the update if old image deletion fails
+            console.error(
+              "Failed to delete old image from Cloudinary:",
+              deleteError,
+            );
+          }
+        }
+      } catch (error) {
+        throw new BadRequestException(
+          `Failed to upload new image: ${error.message}`,
+        );
+      }
+    }
+
+    // Update category in database
+    const updatedCategory = await this.prisma.category.update({
       where: { id },
-      data: updateCategoryDto,
+      data: {
+        ...updateCategoryDto,
+        ...(newThumbnailUrl && { thumbnail: newThumbnailUrl }),
+      },
     });
+
+    return {
+      message: "Category updated successfully",
+      category: updatedCategory,
+    };
   }
 
   async remove(id: string, vendorId: string) {

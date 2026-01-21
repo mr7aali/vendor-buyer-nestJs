@@ -122,21 +122,48 @@ export class CategoriesController {
     return this.categoriesService.findOne(id, vendorId);
   }
 
+  // @Patch(":id")
+  // @Roles(UserType.VENDOR)
+  // @UseGuards(RolesGuard)
+  // async update(
+  //   @Param("id") id: string,
+  //   @Body() updateCategoryDto: UpdateCategoryDto,
+  //   @GetUser() user: any,
+  // ) {
+  //   const vendor = await this.prisma.vendor.findUnique({
+  //     where: { userId: user.id },
+  //   });
+  //   if (!vendor) {
+  //     throw new NotFoundException("Vendor profile not found");
+  //   }
+  //   return this.categoriesService.update(id, vendor.id, updateCategoryDto);
+  // }
   @Patch(":id")
   @Roles(UserType.VENDOR)
   @UseGuards(RolesGuard)
+  @UseInterceptors(FileFieldsInterceptor([{ name: "catImage", maxCount: 1 }]))
   async update(
     @Param("id") id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
+    @UploadedFiles()
+    files: {
+      catImage?: Express.Multer.File[];
+    },
     @GetUser() user: any,
   ) {
+    console.log(files.catImage);
     const vendor = await this.prisma.vendor.findUnique({
       where: { userId: user.id },
     });
     if (!vendor) {
       throw new NotFoundException("Vendor profile not found");
     }
-    return this.categoriesService.update(id, vendor.id, updateCategoryDto);
+    return this.categoriesService.update({
+      id,
+      vendorId: vendor.id,
+      updateCategoryDto,
+      files,
+    });
   }
 
   @Delete(":id")
