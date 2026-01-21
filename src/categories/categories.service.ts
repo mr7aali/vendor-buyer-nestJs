@@ -89,17 +89,6 @@ export class CategoriesService {
     return category;
   }
 
-  // async update(
-  //   id: string,
-  //   vendorId: string,
-  //   updateCategoryDto: UpdateCategoryDto,
-  // ) {
-  //   const category = await this.findOne(id, vendorId);
-  //   return this.prisma.category.update({
-  //     where: { id },
-  //     data: updateCategoryDto,
-  //   });
-  // }
   async update({
     id,
     vendorId,
