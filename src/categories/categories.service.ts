@@ -3,16 +3,34 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
+import { CloudinaryService } from "src/cloudinary/cloudinary.service";
 
 @Injectable()
 export class CategoriesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
-  async create(vendorId: string, createCategoryDto: CreateCategoryDto) {
+  async create({
+    vendorId,
+    createCategoryDto,
+    files,
+  }: {
+    vendorId: string;
+    createCategoryDto: CreateCategoryDto;
+    files: {
+      catImage?: Express.Multer.File[];
+    };
+  }) {
+    if (!files?.catImage) {
+      throw new BadRequestException("Missing required files: `catImage`.");
+    }
     const isExist = await this.prisma.category.findFirst({
       where: { name: createCategoryDto.name },
     });
@@ -21,13 +39,16 @@ export class CategoriesService {
         `Category with name '${createCategoryDto.name}' already exists`,
       );
     }
+    const catImageRes = await this.cloudinaryService.uploadFile(
+      files?.catImage[0],
+    );
 
     return this.prisma.category.create({
       data: {
         ...createCategoryDto,
         vendorId,
         displayOrder: createCategoryDto.displayOrder || 0,
-        thumbnail: "",
+        thumbnail: catImageRes.secure_url,
       },
     });
   }

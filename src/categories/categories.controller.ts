@@ -10,6 +10,9 @@ import {
   NotFoundException,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFiles,
+  BadRequestException,
 } from "@nestjs/common";
 // import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CategoriesService } from "./categories.service";
@@ -21,6 +24,7 @@ import { Roles } from "../auth/decorators/roles.decorator";
 import { GetUser } from "../auth/decorators/get-user.decorator";
 import { UserType } from "../auth/dto/register.dto";
 import { PrismaService } from "../prisma/prisma.service";
+import { FileFieldsInterceptor } from "@nestjs/platform-express";
 
 // @ApiTags("Categories")
 // @ApiBearerAuth("JWT-auth")
@@ -35,9 +39,14 @@ export class CategoriesController {
   @Roles(UserType.VENDOR)
   @UseGuards(RolesGuard)
   @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(FileFieldsInterceptor([{ name: "catImage", maxCount: 1 }]))
   async create(
     @Body() createCategoryDto: CreateCategoryDto,
     @GetUser() user: any,
+    @UploadedFiles()
+    files: {
+      catImage?: Express.Multer.File[];
+    },
   ) {
     const vendor = await this.prisma.vendor.findUnique({
       where: { userId: user.id },
@@ -45,7 +54,11 @@ export class CategoriesController {
     if (!vendor) {
       throw new NotFoundException("Vendor profile not found.");
     }
-    return this.categoriesService.create(vendor.id, createCategoryDto);
+    return this.categoriesService.create({
+      vendorId: vendor.id,
+      createCategoryDto,
+      files,
+    });
   }
 
   @Get("vendor/:vendorId")
