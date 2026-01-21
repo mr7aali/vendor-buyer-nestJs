@@ -102,10 +102,45 @@ export class CategoriesService {
   }
 
   async remove(id: string, vendorId: string) {
-    await this.findOne(id, vendorId);
-    return this.prisma.category.delete({
-      where: { id },
-    });
+    // Find and verify ownership
+    const category = await this.findOne(id, vendorId);
+
+    try {
+      // Delete image from Cloudinary first
+      if (category.thumbnail) {
+        await this.cloudinaryService.deleteFileByUrl(category.thumbnail);
+      }
+
+      // Then delete the category from database
+      const deletedCategory = await this.prisma.category.delete({
+        where: { id },
+      });
+
+      return {
+        message: "Category deleted successfully",
+        category: deletedCategory,
+      };
+    } catch (error) {
+      // If Cloudinary deletion fails, still try to delete from database
+      // or handle based on your requirements
+      if (error.message?.includes("Cloudinary")) {
+        // Log the error but continue with database deletion
+        console.error("Cloudinary deletion failed:", error);
+
+        const deletedCategory = await this.prisma.category.delete({
+          where: { id },
+        });
+
+        return {
+          message:
+            "Category deleted successfully, but image deletion from Cloudinary failed",
+          category: deletedCategory,
+          warning: "Image may still exist in Cloudinary",
+        };
+      }
+
+      throw error;
+    }
   }
 
   async getCategoriesForBuyer(buyerId: string, vendorId: string) {
