@@ -43,24 +43,6 @@ export class ProductsController {
     private readonly prisma: PrismaService,
   ) {}
 
-  // @Post()
-  // @Roles(UserType.VENDOR)
-  // @UseGuards(RolesGuard)
-  // @HttpCode(HttpStatus.CREATED)
-  // @ApiBody({ type: CreateProductDto })
-  // async create(
-  //   @Body() createProductDto: CreateProductDto,
-  //   @GetUser() user: any,
-  // ) {
-  //   const vendor = await this.prisma.vendor.findUnique({
-  //     where: { userId: user.id },
-  //   });
-  //   if (!vendor) {
-  //     throw new NotFoundException("Vendor profile not found");
-  //   }
-  //   return this.productsService.create(vendor.id, createProductDto);
-  // }
-
   @Post()
   @Roles(UserType.VENDOR)
   @UseGuards(RolesGuard)
