@@ -11,13 +11,24 @@ CREATE TABLE "user" (
 );
 
 -- CreateTable
+CREATE TABLE "RefreshToken" (
+    "id" TEXT NOT NULL,
+    "tokenHash" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "revoked" BOOLEAN NOT NULL DEFAULT false,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "RefreshToken_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Buyer" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "vendorCode" TEXT NOT NULL,
     "fulllName" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
+    "nidNumber" TEXT NOT NULL,
     "nidFontPhotoUrl" TEXT NOT NULL,
     "nidBackPhotoUrl" TEXT NOT NULL,
     "profilePhotoUrl" TEXT NOT NULL,
@@ -34,18 +45,38 @@ CREATE TABLE "Vendor" (
     "userId" TEXT NOT NULL,
     "vendorCode" TEXT NOT NULL,
     "fulllName" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
+    "address" TEXT NOT NULL,
+    "storename" TEXT NOT NULL,
+    "storeDescription" TEXT NOT NULL,
     "gender" TEXT NOT NULL,
     "businessName" TEXT,
     "businessDescription" TEXT,
-    "businessAddress" TEXT,
-    "logoUrl" TEXT,
+    "logoUrl" TEXT NOT NULL,
+    "nationalIdNumber" TEXT NOT NULL,
+    "nidFontPhotoUrl" TEXT NOT NULL,
+    "nidBackPhotoUrl" TEXT NOT NULL,
+    "bussinessRegNumber" TEXT NOT NULL,
+    "bussinessIdPhotoUrl" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Vendor_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Category" (
+    "id" TEXT NOT NULL,
+    "vendorId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "thumbnail" TEXT NOT NULL,
+    "description" TEXT,
+    "displayOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -62,19 +93,6 @@ CREATE TABLE "VendorBuyerConnection" (
 );
 
 -- CreateTable
-CREATE TABLE "Category" (
-    "id" TEXT NOT NULL,
-    "vendorId" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "description" TEXT,
-    "displayOrder" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "Product" (
     "id" TEXT NOT NULL,
     "vendorId" TEXT NOT NULL,
@@ -87,6 +105,7 @@ CREATE TABLE "Product" (
     "isAvailable" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "images" TEXT[],
 
     CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
 );
@@ -221,6 +240,19 @@ CREATE TABLE "Notification" (
     CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "password_reset_otp" (
+    "id" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "otp" TEXT NOT NULL,
+    "verified" BOOLEAN NOT NULL DEFAULT false,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "password_reset_otp_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "user_email_key" ON "user"("email");
 
@@ -228,13 +260,13 @@ CREATE UNIQUE INDEX "user_email_key" ON "user"("email");
 CREATE UNIQUE INDEX "Buyer_userId_key" ON "Buyer"("userId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Buyer_vendorCode_key" ON "Buyer"("vendorCode");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Vendor_userId_key" ON "Vendor"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Vendor_vendorCode_key" ON "Vendor"("vendorCode");
+
+-- CreateIndex
+CREATE INDEX "Category_vendorId_idx" ON "Category"("vendorId");
 
 -- CreateIndex
 CREATE INDEX "VendorBuyerConnection_buyerId_idx" ON "VendorBuyerConnection"("buyerId");
@@ -244,9 +276,6 @@ CREATE INDEX "VendorBuyerConnection_vendorId_idx" ON "VendorBuyerConnection"("ve
 
 -- CreateIndex
 CREATE UNIQUE INDEX "VendorBuyerConnection_vendorId_buyerId_key" ON "VendorBuyerConnection"("vendorId", "buyerId");
-
--- CreateIndex
-CREATE INDEX "Category_vendorId_idx" ON "Category"("vendorId");
 
 -- CreateIndex
 CREATE INDEX "Product_vendorId_idx" ON "Product"("vendorId");
@@ -311,6 +340,15 @@ CREATE INDEX "Message_vendorId_buyerId_idx" ON "Message"("vendorId", "buyerId");
 -- CreateIndex
 CREATE INDEX "Notification_userId_idx" ON "Notification"("userId");
 
+-- CreateIndex
+CREATE INDEX "password_reset_otp_email_idx" ON "password_reset_otp"("email");
+
+-- CreateIndex
+CREATE INDEX "password_reset_otp_email_otp_idx" ON "password_reset_otp"("email", "otp");
+
+-- AddForeignKey
+ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
 -- AddForeignKey
 ALTER TABLE "Buyer" ADD CONSTRAINT "Buyer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -318,13 +356,13 @@ ALTER TABLE "Buyer" ADD CONSTRAINT "Buyer_userId_fkey" FOREIGN KEY ("userId") RE
 ALTER TABLE "Vendor" ADD CONSTRAINT "Vendor_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Category" ADD CONSTRAINT "Category_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "VendorBuyerConnection" ADD CONSTRAINT "VendorBuyerConnection_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "VendorBuyerConnection" ADD CONSTRAINT "VendorBuyerConnection_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Category" ADD CONSTRAINT "Category_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Product" ADD CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE CASCADE ON UPDATE CASCADE;
