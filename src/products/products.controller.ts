@@ -15,7 +15,10 @@ import {
   UploadedFiles,
 } from "@nestjs/common";
 import { ProductsService } from "./products.service";
-import { CreateProductDto } from "./dto/create-product.dto";
+import {
+  CreateProductDto,
+  CreateSpecificatonDto,
+} from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
@@ -56,6 +59,20 @@ export class ProductsController {
       createProductDto,
       files: { images: files },
     });
+  }
+
+  @Post("specification/create")
+  @Roles(UserType.VENDOR)
+  @UseGuards(RolesGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(FilesInterceptor("images", 10))
+  async specificationCreate(
+    @Body() dto: CreateSpecificatonDto,
+    @GetUser() user: any,
+  ) {
+    const vendorId = user?.id;
+
+    return this.productsService.specificationCreate(dto, vendorId);
   }
 
   @Get("vendor/:vendorId")

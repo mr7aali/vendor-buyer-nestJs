@@ -5,7 +5,10 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { CreateProductDto } from "./dto/create-product.dto";
+import {
+  CreateProductDto,
+  CreateSpecificatonDto,
+} from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { CloudinaryService } from "src/cloudinary/cloudinary.service";
 
@@ -93,6 +96,30 @@ export class ProductsService {
         `Failed to create product: ${error.message}`,
       );
     }
+  }
+  async specificationCreate(dto: CreateSpecificatonDto, vendorId: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: dto.productId },
+      select: { id: true, vendorId: true },
+    });
+
+    if (!product) {
+      throw new NotFoundException("Product not found");
+    }
+
+    if (product.vendorId !== vendorId) {
+      throw new ForbiddenException(
+        "You are not allowed to add specification to this product",
+      );
+    }
+
+    return this.prisma.specification.create({
+      data: {
+        label: dto.label,
+        value: dto.value,
+        productId: dto.productId,
+      },
+    });
   }
 
   async findAllByVendor(vendorId: string) {
