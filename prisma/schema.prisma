@@ -124,25 +124,34 @@ model VendorBuyerConnection {
 }
 
 model Product {
-  id            String      @id @default(uuid())
-  vendorId      String
-  categoryId    String
-  name          String
-  description   String?
-  price         Decimal     @db.Decimal(10, 2)
-  stockQuantity Int         @default(0)
-  imageUrl      String?
-  isAvailable   Boolean     @default(true)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  images        String[]
-  cartItems     CartItem[]
-  orderItems    OrderItem[]
-  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  vendor        Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  id             String          @id @default(uuid())
+  vendorId       String
+  categoryId     String
+  name           String
+  description    String?
+  price          Decimal         @db.Decimal(10, 2)
+  stockQuantity  Int             @default(0)
+  imageUrl       String?
+  isAvailable    Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  images         String[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  vendor         Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  specifications Specification[]
 
   @@index([vendorId])
   @@index([categoryId])
+}
+
+model Specification {
+  id        String  @id @default(uuid())
+  productId String
+  label     String
+  value     String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model Cart {

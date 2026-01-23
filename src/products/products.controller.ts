@@ -14,16 +14,6 @@ import {
   UseInterceptors,
   UploadedFiles,
 } from "@nestjs/common";
-// import {
-//   ApiTags,
-//   ApiOperation,
-//   ApiResponse,
-//   ApiBearerAuth,
-//   ApiParam,
-//   ApiQuery,
-//   ApiBody,
-//   ApiConsumes,
-// } from "@nestjs/swagger";
 import { ProductsService } from "./products.service";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
@@ -111,18 +101,28 @@ export class ProductsController {
   @Patch(":id")
   @Roles(UserType.VENDOR)
   @UseGuards(RolesGuard)
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FilesInterceptor("images", 10)) // Max 10 images
   async update(
     @Param("id") id: string,
     @Body() updateProductDto: UpdateProductDto,
+    @UploadedFiles() files: Express.Multer.File[],
     @GetUser() user: any,
   ) {
     const vendor = await this.prisma.vendor.findUnique({
       where: { userId: user.id },
     });
+
     if (!vendor) {
       throw new NotFoundException("Vendor profile not found");
     }
-    return this.productsService.update(id, vendor.id, updateProductDto);
+
+    return this.productsService.update({
+      id,
+      vendorId: vendor.id,
+      updateProductDto,
+      files: files && files.length > 0 ? { images: files } : undefined,
+    });
   }
 
   @Delete(":id")
@@ -133,9 +133,11 @@ export class ProductsController {
     const vendor = await this.prisma.vendor.findUnique({
       where: { userId: user.id },
     });
+
     if (!vendor) {
       throw new NotFoundException("Vendor profile not found");
     }
+
     return this.productsService.remove(id, vendor.id);
   }
 }
