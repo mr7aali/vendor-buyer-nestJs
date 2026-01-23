@@ -1,7 +1,12 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateCouponDto } from './dto/create-coupon.dto';
-import { AssignCouponDto } from './dto/assign-coupon.dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateCouponDto } from "./dto/create-coupon.dto";
+import { AssignCouponDto } from "./dto/assign-coupon.dto";
 
 @Injectable()
 export class CouponsService {
@@ -19,7 +24,9 @@ export class CouponsService {
     });
 
     if (existingCoupon) {
-      throw new BadRequestException('Coupon code already exists for this vendor');
+      throw new BadRequestException(
+        "Coupon code already exists for this vendor",
+      );
     }
 
     return this.prisma.coupon.create({
@@ -41,7 +48,7 @@ export class CouponsService {
           select: { buyerAssignments: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -57,7 +64,7 @@ export class CouponsService {
                   select: {
                     id: true,
                     email: true,
-                    fullName: true,
+                    // fullName: true,
                   },
                 },
               },
@@ -68,41 +75,46 @@ export class CouponsService {
     });
 
     if (!coupon) {
-      throw new NotFoundException('Coupon not found');
+      throw new NotFoundException("Coupon not found");
     }
 
     if (coupon.vendorId !== vendorId) {
-      throw new ForbiddenException('You do not have access to this coupon');
+      throw new ForbiddenException("You do not have access to this coupon");
     }
 
     return coupon;
   }
 
-  async assignToBuyer(couponId: string, vendorId: string, assignCouponDto: AssignCouponDto) {
+  async assignToBuyer(
+    couponId: string,
+    vendorId: string,
+    assignCouponDto: AssignCouponDto,
+  ) {
     const coupon = await this.prisma.coupon.findUnique({
       where: { id: couponId },
     });
 
     if (!coupon) {
-      throw new NotFoundException('Coupon not found');
+      throw new NotFoundException("Coupon not found");
     }
 
     if (coupon.vendorId !== vendorId) {
-      throw new ForbiddenException('You do not have access to this coupon');
+      throw new ForbiddenException("You do not have access to this coupon");
     }
 
     // Check if already assigned
-    const existingAssignment = await this.prisma.couponBuyerAssignment.findUnique({
-      where: {
-        couponId_buyerId: {
-          couponId,
-          buyerId: assignCouponDto.buyerId,
+    const existingAssignment =
+      await this.prisma.couponBuyerAssignment.findUnique({
+        where: {
+          couponId_buyerId: {
+            couponId,
+            buyerId: assignCouponDto.buyerId,
+          },
         },
-      },
-    });
+      });
 
     if (existingAssignment) {
-      throw new BadRequestException('Coupon already assigned to this buyer');
+      throw new BadRequestException("Coupon already assigned to this buyer");
     }
 
     // Verify buyer is connected to vendor
@@ -116,7 +128,7 @@ export class CouponsService {
     });
 
     if (!connection || !connection.isActive) {
-      throw new ForbiddenException('Buyer is not connected to this vendor');
+      throw new ForbiddenException("Buyer is not connected to this vendor");
     }
 
     return this.prisma.couponBuyerAssignment.create({
@@ -131,7 +143,7 @@ export class CouponsService {
               select: {
                 id: true,
                 email: true,
-                fullName: true,
+                // fullName: true,
               },
             },
           },
@@ -164,22 +176,32 @@ export class CouponsService {
         coupon: true,
       },
       orderBy: {
-        assignedAt: 'desc',
+        createdAt: "desc",
       },
     });
   }
 
-  async update(id: string, vendorId: string, updateDto: Partial<CreateCouponDto>) {
+  async update(
+    id: string,
+    vendorId: string,
+    updateDto: Partial<CreateCouponDto>,
+  ) {
     const coupon = await this.findOne(id, vendorId);
-    
+
     const updateData: any = {};
     if (updateDto.code) updateData.code = updateDto.code;
-    if (updateDto.discountType) updateData.discountType = updateDto.discountType;
-    if (updateDto.discountValue !== undefined) updateData.discountValue = updateDto.discountValue;
-    if (updateDto.minPurchaseAmount !== undefined) updateData.minPurchaseAmount = updateDto.minPurchaseAmount;
-    if (updateDto.usageLimit !== undefined) updateData.usageLimit = updateDto.usageLimit;
-    if (updateDto.validFrom) updateData.validFrom = new Date(updateDto.validFrom);
-    if (updateDto.validUntil) updateData.validUntil = new Date(updateDto.validUntil);
+    if (updateDto.discountType)
+      updateData.discountType = updateDto.discountType;
+    if (updateDto.discountValue !== undefined)
+      updateData.discountValue = updateDto.discountValue;
+    if (updateDto.minPurchaseAmount !== undefined)
+      updateData.minPurchaseAmount = updateDto.minPurchaseAmount;
+    if (updateDto.usageLimit !== undefined)
+      updateData.usageLimit = updateDto.usageLimit;
+    if (updateDto.validFrom)
+      updateData.validFrom = new Date(updateDto.validFrom);
+    if (updateDto.validUntil)
+      updateData.validUntil = new Date(updateDto.validUntil);
 
     return this.prisma.coupon.update({
       where: { id },

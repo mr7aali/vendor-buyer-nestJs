@@ -7,7 +7,10 @@ import {
   Patch,
   UseGuards,
   NotFoundException,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
@@ -18,6 +21,8 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 import { UserType } from '../auth/dto/register.dto';
 import { PrismaService } from '../prisma/prisma.service';
 
+@ApiTags('Orders')
+@ApiBearerAuth('JWT-auth')
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
 export class OrdersController {
@@ -29,6 +34,13 @@ export class OrdersController {
   @Post()
   @Roles(UserType.BUYER)
   @UseGuards(RolesGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create an order', description: 'Buyer only: Create an order from cart items for a specific vendor. Cart must contain items from the vendor.' })
+  @ApiResponse({ status: 201, description: 'Order created successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request - Cart is empty or insufficient stock' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Buyer not connected to vendor or buyer access required' })
+  @ApiResponse({ status: 404, description: 'Buyer not found' })
+  @ApiBody({ type: CreateOrderDto })
   async create(@Body() createOrderDto: CreateOrderDto, @GetUser() user: any) {
     const buyer = await this.prisma.buyer.findUnique({
       where: { userId: user.id },
@@ -40,6 +52,9 @@ export class OrdersController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'Get all orders', description: 'Get all orders - Buyers see their orders, Vendors see orders for their products' })
+  @ApiResponse({ status: 200, description: 'Orders retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Buyer or vendor profile not found' })
   async findAll(@GetUser() user: any) {
     if (user.userType === 'buyer') {
       const buyer = await this.prisma.buyer.findUnique({
@@ -61,6 +76,11 @@ export class OrdersController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get order by ID', description: 'Get a specific order with all details. Buyers can only see their orders, vendors can only see orders for their products.' })
+  @ApiParam({ name: 'id', description: 'Order ID', example: 'uuid-here' })
+  @ApiResponse({ status: 200, description: 'Order retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - No access to this order' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
   async findOne(@Param('id') id: string, @GetUser() user: any) {
     return this.ordersService.findOne(id, user.id, user.userType);
   }
@@ -68,6 +88,12 @@ export class OrdersController {
   @Patch(':id/status')
   @Roles(UserType.VENDOR)
   @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Update order status', description: 'Vendor only: Update the status of an order (pending, processing, shipped, delivered, cancelled)' })
+  @ApiParam({ name: 'id', description: 'Order ID', example: 'uuid-here' })
+  @ApiResponse({ status: 200, description: 'Order status updated successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Vendor access required or order does not belong to vendor' })
+  @ApiResponse({ status: 404, description: 'Order or vendor not found' })
+  @ApiBody({ type: UpdateOrderStatusDto })
   async updateStatus(
     @Param('id') id: string,
     @Body() updateOrderStatusDto: UpdateOrderStatusDto,

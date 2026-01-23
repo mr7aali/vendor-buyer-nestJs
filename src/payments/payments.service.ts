@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreatePaymentDto } from './dto/create-payment.dto';
-import Stripe from 'stripe';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreatePaymentDto } from "./dto/create-payment.dto";
+import Stripe from "stripe";
 
 @Injectable()
 export class PaymentsService {
@@ -12,17 +17,22 @@ export class PaymentsService {
     private prisma: PrismaService,
     private configService: ConfigService,
   ) {
-    const stripeSecretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+    const stripeSecretKey = this.configService.get<string>(
+      "STRIPE_SECRET_KEY",
+    ) as string;
     if (!stripeSecretKey) {
-      throw new Error('STRIPE_SECRET_KEY is not configured');
+      throw new Error("STRIPE_SECRET_KEY is not configured");
     }
     this.stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2024-12-18.acacia',
+      apiVersion: "2025-12-15.clover",
       typescript: true,
     });
   }
 
-  async createPaymentIntent(buyerId: string, createPaymentDto: CreatePaymentDto) {
+  async createPaymentIntent(
+    buyerId: string,
+    createPaymentDto: CreatePaymentDto,
+  ) {
     const order = await this.prisma.order.findUnique({
       where: { id: createPaymentDto.orderId },
       include: {
@@ -32,15 +42,15 @@ export class PaymentsService {
     });
 
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException("Order not found");
     }
 
     if (order.buyerId !== buyerId) {
-      throw new ForbiddenException('You do not have access to this order');
+      throw new ForbiddenException("You do not have access to this order");
     }
 
-    if (order.status === 'cancelled') {
-      throw new BadRequestException('Cannot pay for a cancelled order');
+    if (order.status === "cancelled") {
+      throw new BadRequestException("Cannot pay for a cancelled order");
     }
 
     // Check if payment already exists
@@ -49,15 +59,17 @@ export class PaymentsService {
     });
 
     if (existingPayment) {
-      if (existingPayment.status === 'succeeded') {
-        throw new BadRequestException('Order has already been paid');
+      if (existingPayment.status === "succeeded") {
+        throw new BadRequestException("Order has already been paid");
       }
       // Return existing payment intent
       if (existingPayment.stripePaymentId) {
         return {
-          clientSecret: (await this.stripe.paymentIntents.retrieve(
-            existingPayment.stripePaymentId,
-          )).client_secret,
+          clientSecret: (
+            await this.stripe.paymentIntents.retrieve(
+              existingPayment.stripePaymentId,
+            )
+          ).client_secret,
           paymentId: existingPayment.id,
         };
       }
@@ -66,11 +78,11 @@ export class PaymentsService {
     // Get or create Stripe customer
     let customerId: string | null = null;
     const buyer = order.buyer;
-    
+
     // Create payment intent
     const paymentIntent = await this.stripe.paymentIntents.create({
       amount: Math.round(Number(order.totalAmount) * 100), // Convert to cents
-      currency: 'usd',
+      currency: "usd",
       metadata: {
         orderId: order.id,
         buyerId: buyerId,
@@ -85,14 +97,14 @@ export class PaymentsService {
         stripePaymentId: paymentIntent.id,
         stripeCustomerId: customerId,
         amount: order.totalAmount,
-        status: 'pending',
+        status: "pending",
       },
       create: {
         orderId: order.id,
         stripePaymentId: paymentIntent.id,
         stripeCustomerId: customerId,
         amount: order.totalAmount,
-        status: 'pending',
+        status: "pending",
       },
     });
 
@@ -111,36 +123,35 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      throw new NotFoundException('Payment not found');
+      throw new NotFoundException("Payment not found");
     }
 
-    const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
+    const paymentIntent =
+      await this.stripe.paymentIntents.retrieve(paymentIntentId);
 
-    if (paymentIntent.status === 'succeeded') {
+    if (paymentIntent.status === "succeeded") {
       // Update payment status
       await this.prisma.payment.update({
         where: { id: payment.id },
         data: {
-          status: 'succeeded',
-          paidAt: new Date(),
-          paymentMethod: paymentIntent.payment_method_types[0] || 'card',
+          status: "succeeded",
         },
       });
 
       // Update order status if it's still pending
-      if (payment.order.status === 'pending') {
+      if (payment.order.status === "pending") {
         await this.prisma.order.update({
           where: { id: payment.orderId },
           data: {
-            status: 'processing',
+            status: "processing",
           },
         });
       }
-    } else if (paymentIntent.status === 'failed' || paymentIntent.status === 'canceled') {
+    } else if (paymentIntent.status === "canceled") {
       await this.prisma.payment.update({
         where: { id: payment.id },
         data: {
-          status: 'failed',
+          status: "canceled",
         },
       });
     }
@@ -157,31 +168,39 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      throw new NotFoundException('Payment not found');
+      throw new NotFoundException("Payment not found");
     }
 
     return payment;
   }
 
   async handleWebhook(signature: string, payload: Buffer) {
-    const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+    const webhookSecret = this.configService.get<string>(
+      "STRIPE_WEBHOOK_SECRET",
+    );
     if (!webhookSecret) {
-      throw new Error('STRIPE_WEBHOOK_SECRET is not configured');
+      throw new Error("STRIPE_WEBHOOK_SECRET is not configured");
     }
 
     let event: Stripe.Event;
 
     try {
-      event = this.stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+      event = this.stripe.webhooks.constructEvent(
+        payload,
+        signature,
+        webhookSecret,
+      );
     } catch (err) {
-      throw new BadRequestException(`Webhook signature verification failed: ${err.message}`);
+      throw new BadRequestException(
+        `Webhook signature verification failed: ${err.message}`,
+      );
     }
 
     // Handle the event
-    if (event.type === 'payment_intent.succeeded') {
+    if (event.type === "payment_intent.succeeded") {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       await this.confirmPayment(paymentIntent.id);
-    } else if (event.type === 'payment_intent.payment_failed') {
+    } else if (event.type === "payment_intent.payment_failed") {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       const payment = await this.prisma.payment.findUnique({
         where: { stripePaymentId: paymentIntent.id },
@@ -191,7 +210,7 @@ export class PaymentsService {
         await this.prisma.payment.update({
           where: { id: payment.id },
           data: {
-            status: 'failed',
+            status: "failed",
           },
         });
       }

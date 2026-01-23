@@ -1,18 +1,54 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  ConflictException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateCategoryDto } from "./dto/create-category.dto";
+import { UpdateCategoryDto } from "./dto/update-category.dto";
+import { CloudinaryService } from "src/cloudinary/cloudinary.service";
 
 @Injectable()
 export class CategoriesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
-  async create(vendorId: string, createCategoryDto: CreateCategoryDto) {
+  async create({
+    vendorId,
+    createCategoryDto,
+    files,
+  }: {
+    vendorId: string;
+    createCategoryDto: CreateCategoryDto;
+    files: {
+      catImage?: Express.Multer.File[];
+    };
+  }) {
+    if (!files?.catImage) {
+      throw new BadRequestException("Missing required files: `catImage`.");
+    }
+    const isExist = await this.prisma.category.findFirst({
+      where: { name: createCategoryDto.name },
+    });
+    if (isExist) {
+      throw new ConflictException(
+        `Category with name '${createCategoryDto.name}' already exists`,
+      );
+    }
+    const catImageRes = await this.cloudinaryService.uploadFile(
+      files?.catImage[0],
+    );
+
     return this.prisma.category.create({
       data: {
         ...createCategoryDto,
         vendorId,
         displayOrder: createCategoryDto.displayOrder || 0,
+        thumbnail: catImageRes.secure_url,
       },
     });
   }
@@ -20,13 +56,16 @@ export class CategoriesService {
   async findAllByVendor(vendorId: string) {
     return this.prisma.category.findMany({
       where: { vendorId },
-      orderBy: { displayOrder: 'asc' },
+      orderBy: { displayOrder: "asc" },
       include: {
         _count: {
           select: { products: true },
         },
       },
     });
+  }
+  async findAll() {
+    return await this.prisma.category.findMany({});
   }
 
   async findOne(id: string, vendorId: string) {
@@ -40,29 +79,133 @@ export class CategoriesService {
     });
 
     if (!category) {
-      throw new NotFoundException('Category not found');
+      throw new NotFoundException("Category not found");
     }
 
     if (category.vendorId !== vendorId) {
-      throw new ForbiddenException('You do not have access to this category');
+      throw new ForbiddenException("You do not have access to this category");
     }
 
     return category;
   }
 
-  async update(id: string, vendorId: string, updateCategoryDto: UpdateCategoryDto) {
+  async update({
+    id,
+    vendorId,
+    updateCategoryDto,
+    files,
+  }: {
+    id: string;
+    vendorId: string;
+    updateCategoryDto: UpdateCategoryDto;
+    files?: {
+      catImage?: Express.Multer.File[];
+    };
+  }) {
+    // Find and verify ownership
     const category = await this.findOne(id, vendorId);
-    return this.prisma.category.update({
+
+    // Check if name is being updated and if it conflicts
+    if (updateCategoryDto.name && updateCategoryDto.name !== category.name) {
+      const isExist = await this.prisma.category.findFirst({
+        where: {
+          name: updateCategoryDto.name,
+          id: { not: id }, // Exclude current category
+        },
+      });
+
+      if (isExist) {
+        throw new ConflictException(
+          `Category with name '${updateCategoryDto.name}' already exists`,
+        );
+      }
+    }
+
+    let newThumbnailUrl: string | undefined;
+    console.log(files?.catImage && files.catImage.length > 0);
+    // If new image is uploaded
+    if (files?.catImage && files.catImage.length > 0) {
+      try {
+        // Step 1: Upload new image to Cloudinary
+        const catImageRes = await this.cloudinaryService.uploadFile(
+          files.catImage[0],
+        );
+        newThumbnailUrl = catImageRes.secure_url;
+        console.log(newThumbnailUrl);
+        // Step 2: Delete old image from Cloudinary (if exists)
+        if (category.thumbnail) {
+          try {
+            await this.cloudinaryService.deleteFileByUrl(category.thumbnail);
+          } catch (deleteError) {
+            // Log error but don't fail the update if old image deletion fails
+            console.error(
+              "Failed to delete old image from Cloudinary:",
+              deleteError,
+            );
+          }
+        }
+      } catch (error) {
+        throw new BadRequestException(
+          `Failed to upload new image: ${error.message}`,
+        );
+      }
+    }
+
+    // Update category in database
+    const updatedCategory = await this.prisma.category.update({
       where: { id },
-      data: updateCategoryDto,
+      data: {
+        ...updateCategoryDto,
+        ...(newThumbnailUrl && { thumbnail: newThumbnailUrl }),
+      },
     });
+
+    return {
+      message: "Category updated successfully",
+      category: updatedCategory,
+    };
   }
 
   async remove(id: string, vendorId: string) {
-    await this.findOne(id, vendorId);
-    return this.prisma.category.delete({
-      where: { id },
-    });
+    // Find and verify ownership
+    const category = await this.findOne(id, vendorId);
+
+    try {
+      // Delete image from Cloudinary first
+      if (category.thumbnail) {
+        await this.cloudinaryService.deleteFileByUrl(category.thumbnail);
+      }
+
+      // Then delete the category from database
+      const deletedCategory = await this.prisma.category.delete({
+        where: { id },
+      });
+
+      return {
+        message: "Category deleted successfully",
+        category: deletedCategory,
+      };
+    } catch (error) {
+      // If Cloudinary deletion fails, still try to delete from database
+      // or handle based on your requirements
+      if (error.message?.includes("Cloudinary")) {
+        // Log the error but continue with database deletion
+        console.error("Cloudinary deletion failed:", error);
+
+        const deletedCategory = await this.prisma.category.delete({
+          where: { id },
+        });
+
+        return {
+          message:
+            "Category deleted successfully, but image deletion from Cloudinary failed",
+          category: deletedCategory,
+          warning: "Image may still exist in Cloudinary",
+        };
+      }
+
+      throw error;
+    }
   }
 
   async getCategoriesForBuyer(buyerId: string, vendorId: string) {
@@ -77,12 +220,12 @@ export class CategoriesService {
     });
 
     if (!connection || !connection.isActive) {
-      throw new ForbiddenException('You are not connected to this vendor');
+      throw new ForbiddenException("You are not connected to this vendor");
     }
 
     return this.prisma.category.findMany({
       where: { vendorId },
-      orderBy: { displayOrder: 'asc' },
+      orderBy: { displayOrder: "asc" },
       include: {
         _count: {
           select: { products: true },

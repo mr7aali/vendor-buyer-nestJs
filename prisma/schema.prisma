@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider     = "prisma-client"
   output       = "../generated/prisma"
@@ -12,4 +6,304 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ------------------------------completed part start-------------------------
+model User {
+  id               String         @id @default(uuid())
+  email            String         @unique
+  passwordHash     String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  userType         String
+  buyer            Buyer?
+  receivedMessages Message[]      @relation("ReceivedMessages")
+  sentMessages     Message[]      @relation("SentMessages")
+  notifications    Notification[]
+  vendor           Vendor?
+  refreshTokens    RefreshToken[]
+
+  @@map("user")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  revoked   Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Buyer {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  fulllName         String
+  // email             String                  @unique
+  phone             String
+  nidNumber         String
+  nidFontPhotoUrl   String
+  nidBackPhotoUrl   String
+  profilePhotoUrl   String
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  gender            String
+  user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cart              Cart?
+  couponAssignments CouponBuyerAssignment[]
+  messages          Message[]
+  orders            Order[]
+  connections       VendorBuyerConnection[]
+}
+
+model Vendor {
+  id                  String  @id @default(uuid())
+  userId              String  @unique
+  vendorCode          String  @unique
+  fulllName           String
+  phone               String
+  // email               String  @unique
+  address             String
+  storename           String
+  storeDescription    String
+  gender              String
+  businessName        String?
+  businessDescription String?
+  logoUrl             String
+  nationalIdNumber    String
+  nidFontPhotoUrl     String
+  nidBackPhotoUrl     String
+  bussinessRegNumber  String
+  bussinessIdPhotoUrl String
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categories  Category[]
+  coupons     Coupon[]
+  messages    Message[]
+  orders      Order[]
+  products    Product[]
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connections VendorBuyerConnection[]
+}
+
+model Category {
+  id           String    @id @default(uuid())
+  vendorId     String
+  name         String
+  thumbnail    String
+  description  String?
+  displayOrder Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  vendor       Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  products     Product[]
+
+  @@index([vendorId])
+}
+
+// ------------------------------completed part End-------------------------
+model VendorBuyerConnection {
+  id          String   @id @default(uuid())
+  vendorId    String
+  buyerId     String
+  isActive    Boolean  @default(true)
+  connectedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  buyer       Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, buyerId])
+  @@index([buyerId])
+  @@index([vendorId])
+}
+
+model Product {
+  id            String      @id @default(uuid())
+  vendorId      String
+  categoryId    String
+  name          String
+  description   String?
+  price         Decimal     @db.Decimal(10, 2)
+  stockQuantity Int         @default(0)
+  imageUrl      String?
+  isAvailable   Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  images        String[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  vendor        Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([categoryId])
+}
+
+model Cart {
+  id        String     @id @default(uuid())
+  buyerId   String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  buyer     Buyer      @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+}
+
+model CartItem {
+  id              String   @id @default(uuid())
+  cartId          String
+  productId       String
+  quantity        Int
+  priceAtAddition Decimal  @db.Decimal(10, 2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  cart            Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  buyerId         String
+  vendorId        String
+  orderNumber     String      @unique
+  subtotal        Decimal     @db.Decimal(10, 2)
+  discountAmount  Decimal     @default(0) @db.Decimal(10, 2)
+  totalAmount     Decimal     @db.Decimal(10, 2)
+  shippingAddress String?
+  couponId        String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  status          String
+  buyer           Buyer       @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  coupon          Coupon?     @relation(fields: [couponId], references: [id])
+  vendor          Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  items           OrderItem[]
+  payments        Payment?
+
+  @@index([buyerId])
+  @@index([vendorId])
+  @@index([orderNumber])
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  productId  String
+  quantity   Int
+  unitPrice  Decimal  @db.Decimal(10, 2)
+  totalPrice Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model Payment {
+  id               String   @id @default(uuid())
+  orderId          String   @unique
+  stripePaymentId  String?  @unique
+  stripeCustomerId String?
+  amount           Decimal  @db.Decimal(10, 2)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  status           String
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([stripePaymentId])
+}
+
+model Coupon {
+  id                String                  @id @default(uuid())
+  vendorId          String
+  code              String
+  discountValue     Decimal                 @db.Decimal(10, 2)
+  minPurchaseAmount Decimal?                @db.Decimal(10, 2)
+  maxDiscountAmount Decimal?                @db.Decimal(10, 2)
+  validFrom         DateTime
+  validUntil        DateTime
+  usageLimit        Int?
+  usedCount         Int                     @default(0)
+  isActive          Boolean                 @default(true)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  discountType      String
+  vendor            Vendor                  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  buyerAssignments  CouponBuyerAssignment[]
+  orders            Order[]
+
+  @@unique([vendorId, code])
+  @@index([vendorId])
+}
+
+model CouponBuyerAssignment {
+  id        String    @id @default(uuid())
+  couponId  String
+  buyerId   String
+  isUsed    Boolean   @default(false)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  buyer     Buyer     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  coupon    Coupon    @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, buyerId])
+  @@index([buyerId])
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  senderId    String
+  receiverId  String
+  vendorId    String?
+  buyerId     String?
+  messageText String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  buyer       Buyer?   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  vendor      Vendor?  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([vendorId, buyerId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// NEW MODEL FOR PASSWORD RESET OTP
+model PasswordResetOtp {
+  id        String   @id @default(uuid())
+  email     String
+  otp       String
+  verified  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([email, otp])
+  @@map("password_reset_otp")
 }

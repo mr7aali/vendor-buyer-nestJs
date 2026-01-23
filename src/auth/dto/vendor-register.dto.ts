@@ -1,19 +1,42 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+// vendor-register.dto.ts
+import { IsString, IsEmail, IsOptional } from "class-validator";
 
 export class VendorRegisterDto {
   @IsString()
-  @IsNotEmpty()
-  businessName: string;
+  fulllName: string;
 
   @IsString()
+  phone: string;
+
+  // @IsEmail()
+  // email: string;
+
+  @IsString()
+  address: string;
+
+  @IsString()
+  storename: string;
+
+  @IsString()
+  storeDescription: string;
+
+  @IsString()
+  gender: string;
+
   @IsOptional()
+  @IsString()
+  businessName?: string;
+
+  @IsOptional()
+  @IsString()
   businessDescription?: string;
 
   @IsString()
-  @IsOptional()
-  businessAddress?: string;
+  nationalIdNumber: string;
 
   @IsString()
-  @IsOptional()
-  logoUrl?: string;
+  bussinessRegNumber: string;
+
+  // Remove the URL fields - we'll upload files instead
+  // logoUrl, nidFontPhotoUrl, nidBackPhotoUrl, bussinessIdPhotoUrl will be uploaded
 }
