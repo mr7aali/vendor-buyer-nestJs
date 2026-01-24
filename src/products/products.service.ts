@@ -313,7 +313,11 @@ export class ProductsService {
       );
     }
   }
-
+  async getAllProductForTest() {
+    return this.prisma.product.findMany({
+      include: { category: true, _count: true },
+    });
+  }
   async getProductsForBuyer(buyerId: string, vendorId: string) {
     // Check connection
     const connection = await this.prisma.vendorBuyerConnection.findUnique({

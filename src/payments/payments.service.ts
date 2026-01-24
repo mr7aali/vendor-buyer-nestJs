@@ -80,9 +80,20 @@ export class PaymentsService {
     const buyer = order.buyer;
 
     // Create payment intent
-    const paymentIntent = await this.stripe.paymentIntents.create({
-      amount: Math.round(Number(order.totalAmount) * 100), // Convert to cents
-      currency: "usd",
+    const paymentIntent = await this.stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            unit_amount: Math.round(Number(order.totalAmount) * 100),
+            product_data: { name: "This is a dummy Product" },
+          },
+          quantity: 1,
+        },
+      ],
+      success_url: "https://example.com/success",
+      cancel_url: "https://example.com/failed",
       metadata: {
         orderId: order.id,
         buyerId: buyerId,
@@ -111,6 +122,8 @@ export class PaymentsService {
     return {
       clientSecret: paymentIntent.client_secret,
       paymentId: payment.id,
+      paymentLink: paymentIntent.url,
+      hints: paymentIntent,
     };
   }
 
