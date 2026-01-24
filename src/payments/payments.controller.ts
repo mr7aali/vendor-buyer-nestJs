@@ -52,35 +52,11 @@ export class PaymentsController {
 
   @Get("order/:orderId")
   @UseGuards(JwtAuthGuard)
-  // @ApiBearerAuth("JWT-auth")
-  // @ApiOperation({
-  //   summary: "Get payment by order ID",
-  //   description: "Get payment information for a specific order",
-  // })
-  // @ApiParam({ name: "orderId", description: "Order ID", example: "uuid-here" })
-  // @ApiResponse({ status: 200, description: "Payment retrieved successfully" })
-  // @ApiResponse({ status: 404, description: "Payment not found" })
   async getPaymentByOrderId(@Param("orderId") orderId: string) {
     return this.paymentsService.getPaymentByOrderId(orderId);
   }
 
   @Post("webhook")
-  // @ApiExcludeEndpoint()
-  // @ApiOperation({
-  //   summary: "Stripe webhook endpoint",
-  //   description:
-  //     "Internal endpoint for Stripe webhook events. Do not call directly.",
-  // })
-  // @ApiHeader({
-  //   name: "stripe-signature",
-  //   description: "Stripe webhook signature",
-  //   required: true,
-  // })
-  // @ApiResponse({ status: 200, description: "Webhook processed successfully" })
-  // @ApiResponse({
-  //   status: 400,
-  //   description: "Webhook signature verification failed",
-  // })
   async handleWebhook(
     @Headers("stripe-signature") signature: string,
     @Req() req: RawBodyRequest<Request>,
