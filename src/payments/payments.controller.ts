@@ -13,7 +13,6 @@ import {
   Delete,
 } from "@nestjs/common";
 import type { RawBodyRequest } from "@nestjs/common";
-// import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody, ApiHeader, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { PaymentsService } from "./payments.service";
 import { CreatePaymentDto } from "./dto/create-payment.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -23,7 +22,6 @@ import { GetUser } from "../auth/decorators/get-user.decorator";
 import { UserType } from "../auth/dto/register.dto";
 import { PrismaService } from "../prisma/prisma.service";
 
-// @ApiTags("Payments")
 @Controller("payments")
 export class PaymentsController {
   constructor(
@@ -31,11 +29,9 @@ export class PaymentsController {
     private readonly prisma: PrismaService,
   ) {}
 
-  // @ApiBody({ type: CreatePaymentDto })
   @Post("create-intent")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserType.BUYER)
-  // @UseGuards(RolesGuard)
   @HttpCode(HttpStatus.CREATED)
   async createPaymentIntent(
     @Body() createPaymentDto: CreatePaymentDto,
@@ -56,19 +52,33 @@ export class PaymentsController {
     return this.paymentsService.getPaymentByOrderId(orderId);
   }
 
+  @Get("status/:sessionId")
+  @UseGuards(JwtAuthGuard)
+  async getPaymentStatus(@Param("sessionId") sessionId: string) {
+    return this.paymentsService.getPaymentStatus(sessionId);
+  }
+
   @Post("webhook")
+  @HttpCode(HttpStatus.OK)
   async handleWebhook(
     @Headers("stripe-signature") signature: string,
     @Req() req: RawBodyRequest<Request>,
   ) {
     return this.paymentsService.handleWebhook(signature, req.rawBody as Buffer);
   }
+
+  // Development endpoints - remove in production
   @Get()
   async getAll() {
-    return this.prisma.payment.findMany({});
+    return this.prisma.payment.findMany({
+      include: {
+        order: true,
+      },
+    });
   }
+
   @Delete()
-  async getDelete() {
+  async deleteAll() {
     return this.prisma.payment.deleteMany({});
   }
 }

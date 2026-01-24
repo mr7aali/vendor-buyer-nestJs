@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment System Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .config-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .config-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .response-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .response-section h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        pre {
+            background: #2d3748;
+            color: #68d391;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-succeeded {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .payment-link {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            margin-top: 15px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .payment-link:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>💳 Payment System Tester</h1>
+
+        <div class="config-section">
+            <h2>⚙️ Configuration</h2>
+            <div class="form-group">
+                <label>API Base URL</label>
+                <input type="text" id="apiUrl" value="http://localhost:3000" placeholder="http://localhost:3000">
+            </div>
+            <div class="form-group">
+                <label>JWT Token (Login first to get token)</label>
+                <textarea id="jwtToken" rows="3" placeholder="Paste your JWT token here"></textarea>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h2>🔐 Authentication</h2>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="loginEmail" value="buyer@test.com">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="loginPassword" value="password123">
+            </div>
+            <button class="btn" onclick="login()">Login</button>
+            <div id="authResponse"></div>
+        </div>
+
+        <div class="config-section">
+            <h2>💰 Create Payment Intent</h2>
+            <div class="form-group">
+                <label>Order ID</label>
+                <input type="text" id="orderId" placeholder="Enter order ID">
+            </div>
+            <button class="btn" onclick="createPaymentIntent()">Create Payment</button>
+            <div id="paymentResponse"></div>
+        </div>
+
+        <div class="config-section">
+            <h2>🔍 Get Payment by Order ID</h2>
+            <div class="form-group">
+                <label>Order ID</label>
+                <input type="text" id="searchOrderId" placeholder="Enter order ID">
+            </div>
+            <button class="btn btn-success" onclick="getPaymentByOrderId()">Get Payment</button>
+            <div id="orderPaymentResponse"></div>
+        </div>
+
+        <div class="config-section">
+            <h2>📊 Get Payment Status by Session ID</h2>
+            <div class="form-group">
+                <label>Session ID</label>
+                <input type="text" id="sessionId" placeholder="Enter Stripe session ID">
+            </div>
+            <button class="btn btn-success" onclick="getPaymentStatus()">Get Status</button>
+            <div id="statusResponse"></div>
+        </div>
+
+        <div class="config-section">
+            <h2>📋 Get All Payments</h2>
+            <button class="btn btn-success" onclick="getAllPayments()">Get All Payments</button>
+            <button class="btn btn-danger" onclick="deleteAllPayments()">Delete All Payments</button>
+            <div id="allPaymentsResponse"></div>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            apiUrl: '',
+            token: ''
+        };
+
+        function getApiUrl() {
+            return document.getElementById('apiUrl').value || 'http://localhost:3000';
+        }
+
+        function getToken() {
+            return document.getElementById('jwtToken').value;
+        }
+
+        function showLoading(elementId) {
+            document.getElementById(elementId).innerHTML = '<div class="loading">⏳ Loading...</div>';
+        }
+
+        function showError(elementId, error) {
+            document.getElementById(elementId).innerHTML = `
+                <div class="error">
+                    <strong>Error:</strong> ${error}
+                </div>
+            `;
+        }
+
+        function showSuccess(elementId, message) {
+            document.getElementById(elementId).innerHTML = `
+                <div class="success">
+                    <strong>Success:</strong> ${message}
+                </div>
+            `;
+        }
+
+        function showResponse(elementId, title, data) {
+            document.getElementById(elementId).innerHTML = `
+                <div class="response-section">
+                    <h3>${title}</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+        }
+
+        async function login() {
+            showLoading('authResponse');
+
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const response = await fetch(`${getApiUrl()}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('jwtToken').value = data.access_token;
+                    showSuccess('authResponse', 'Login successful! Token saved.');
+                    showResponse('authResponse', '✅ Login Response', data);
+                } else {
+                    showError('authResponse', data.message || 'Login failed');
+                }
+            } catch (error) {
+                showError('authResponse', error.message);
+            }
+        }
+
+        async function createPaymentIntent() {
+            showLoading('paymentResponse');
+
+            const orderId = document.getElementById('orderId').value;
+            const token = getToken();
+
+            if (!token) {
+                showError('paymentResponse', 'Please login first to get a token');
+                return;
+            }
+
+            if (!orderId) {
+                showError('paymentResponse', 'Please enter an order ID');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${getApiUrl()}/payments/create-intent`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ orderId })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    let html = `
+                        <div class="response-section">
+                            <h3>✅ Payment Intent Created</h3>
+                            <div class="card">
+                                <p><strong>Payment ID:</strong> ${data.paymentId}</p>
+                                <p><strong>Session ID:</strong> ${data.sessionId}</p>
+                                <p><strong>Order Number:</strong> ${data.orderNumber}</p>
+                                <p><strong>Amount:</strong> $${data.amount}</p>
+                                <p><strong>Expires At:</strong> ${new Date(data.expiresAt).toLocaleString()}</p>
+                                ${data.message ? `<p><strong>Message:</strong> ${data.message}</p>` : ''}
+                                ${data.paymentLink ? `<a href="${data.paymentLink}" target="_blank" class="payment-link">🔗 Open Payment Link</a>` : ''}
+                            </div>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                    document.getElementById('paymentResponse').innerHTML = html;
+
+                    // Auto-fill session ID for status check
+                    document.getElementById('sessionId').value = data.sessionId;
+                } else {
+                    showError('paymentResponse', data.message || 'Failed to create payment intent');
+                }
+            } catch (error) {
+                showError('paymentResponse', error.message);
+            }
+        }
+
+        async function getPaymentByOrderId() {
+            showLoading('orderPaymentResponse');
+
+            const orderId = document.getElementById('searchOrderId').value;
+            const token = getToken();
+
+            if (!token) {
+                showError('orderPaymentResponse', 'Please login first');
+                return;
+            }
+
+            if (!orderId) {
+                showError('orderPaymentResponse', 'Please enter an order ID');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${getApiUrl()}/payments/order/${orderId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    let statusClass = 'status-pending';
+                    if (data.status === 'succeeded') statusClass = 'status-succeeded';
+                    if (data.status === 'failed') statusClass = 'status-failed';
+
+                    let html = `
+                        <div class="response-section">
+                            <h3>💳 Payment Details</h3>
+                            <div class="card">
+                                <p><strong>Payment ID:</strong> ${data.id}</p>
+                                <p><strong>Amount:</strong> $${data.amount}</p>
+                                <p><strong>Status:</strong> <span class="status-badge ${statusClass}">${data.status}</span></p>
+                                <p><strong>Stripe Payment ID:</strong> ${data.stripePaymentId || 'N/A'}</p>
+                                <p><strong>Created:</strong> ${new Date(data.createdAt).toLocaleString()}</p>
+                            </div>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                    document.getElementById('orderPaymentResponse').innerHTML = html;
+                } else {
+                    showError('orderPaymentResponse', data.message || 'Payment not found');
+                }
+            } catch (error) {
+                showError('orderPaymentResponse', error.message);
+            }
+        }
+
+        async function getPaymentStatus() {
+            showLoading('statusResponse');
+
+            const sessionId = document.getElementById('sessionId').value;
+            const token = getToken();
+
+            if (!token) {
+                showError('statusResponse', 'Please login first');
+                return;
+            }
+
+            if (!sessionId) {
+                showError('statusResponse', 'Please enter a session ID');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${getApiUrl()}/payments/status/${sessionId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    let html = `
+                        <div class="response-section">
+                            <h3>📊 Payment Status</h3>
+                            <div class="card">
+                                <p><strong>Session Status:</strong> ${data.sessionStatus}</p>
+                                <p><strong>Payment Status:</strong> ${data.paymentStatus}</p>
+                            </div>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                    document.getElementById('statusResponse').innerHTML = html;
+                } else {
+                    showError('statusResponse', data.message || 'Status check failed');
+                }
+            } catch (error) {
+                showError('statusResponse', error.message);
+            }
+        }
+
+        async function getAllPayments() {
+            showLoading('allPaymentsResponse');
+
+            try {
+                const response = await fetch(`${getApiUrl()}/payments`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (data.length === 0) {
+                        document.getElementById('allPaymentsResponse').innerHTML = `
+                            <div class="response-section">
+                                <h3>📋 All Payments</h3>
+                                <p>No payments found</p>
+                            </div>
+                        `;
+                    } else {
+                        let cardsHtml = data.map(payment => {
+                            let statusClass = 'status-pending';
+                            if (payment.status === 'succeeded') statusClass = 'status-succeeded';
+                            if (payment.status === 'failed') statusClass = 'status-failed';
+
+                            return `
+                                <div class="card">
+                                    <h4>Payment #${payment.id.slice(0, 8)}</h4>
+                                    <p><strong>Order ID:</strong> ${payment.orderId}</p>
+                                    <p><strong>Amount:</strong> $${payment.amount}</p>
+                                    <span class="status-badge ${statusClass}">${payment.status}</span>
+                                    <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                                        Created: ${new Date(payment.createdAt).toLocaleString()}
+                                    </p>
+                                </div>
+                            `;
+                        }).join('');
+
+                        document.getElementById('allPaymentsResponse').innerHTML = `
+                            <div class="response-section">
+                                <h3>📋 All Payments (${data.length})</h3>
+                                <div class="grid">
+                                    ${cardsHtml}
+                                </div>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </div>
+                        `;
+                    }
+                } else {
+                    showError('allPaymentsResponse', 'Failed to fetch payments');
+                }
+            } catch (error) {
+                showError('allPaymentsResponse', error.message);
+            }
+        }
+
+        async function deleteAllPayments() {
+            if (!confirm('Are you sure you want to delete all payments? This action cannot be undone.')) {
+                return;
+            }
+
+            showLoading('allPaymentsResponse');
+
+            try {
+                const response = await fetch(`${getApiUrl()}/payments`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess('allPaymentsResponse', `Deleted ${data.count} payment(s)`);
+                } else {
+                    showError('allPaymentsResponse', 'Failed to delete payments');
+                }
+            } catch (error) {
+                showError('allPaymentsResponse', error.message);
+            }
+        }
+
+        // Check for session ID in URL (for redirect from Stripe)
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session_id');
+            const orderId = urlParams.get('order_id');
+
+            if (sessionId) {
+                document.getElementById('sessionId').value = sessionId;
+                showSuccess('statusResponse', 'Redirected from Stripe payment!');
+            }
+
+            if (orderId) {
+                document.getElementById('orderId').value = orderId;
+                document.getElementById('searchOrderId').value = orderId;
+            }
+        });
+    </script>
+</body>
+
+</html>

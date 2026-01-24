@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            color: #667eea;
+            margin-top: 20px;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>💳 Pay Now</h1>
+
+        <div class="form-group">
+            <label>Backend URL</label>
+            <input type="text" id="backendUrl" placeholder="http://localhost:3000" value="http://localhost:3000">
+        </div>
+
+        <div class="form-group">
+            <label>Order ID</label>
+            <input type="text" id="orderId" placeholder="Enter your order ID">
+        </div>
+
+        <div class="form-group">
+            <label>JWT Token</label>
+            <input type="text" id="jwtToken" placeholder="Paste your JWT token">
+        </div>
+
+        <button class="btn" id="payBtn" onclick="createPayment()">Create Payment</button>
+
+        <div id="message"></div>
+    </div>
+
+    <script>
+        async function createPayment() {
+            const backendUrl = document.getElementById('backendUrl').value.trim();
+            const orderId = document.getElementById('orderId').value.trim();
+            const jwtToken = document.getElementById('jwtToken').value.trim();
+            const messageDiv = document.getElementById('message');
+            const btn = document.getElementById('payBtn');
+
+            if (!backendUrl || !orderId || !jwtToken) {
+                messageDiv.innerHTML = '<div class="error">Please fill all fields</div>';
+                return;
+            }
+
+            btn.disabled = true;
+            messageDiv.innerHTML = '<div class="loading">⏳ Creating payment...</div>';
+
+            try {
+                const response = await fetch(`${backendUrl}/payments/create-intent`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${jwtToken}`
+                    },
+                    body: JSON.stringify({ orderId })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.paymentLink) {
+                    messageDiv.innerHTML = '<div class="loading">✅ Redirecting to payment...</div>';
+                    setTimeout(() => {
+                        window.location.href = data.paymentLink;
+                    }, 1000);
+                } else {
+                    messageDiv.innerHTML = `<div class="error">${data.message || 'Payment creation failed'}</div>`;
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                messageDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>

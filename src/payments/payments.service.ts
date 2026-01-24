@@ -62,105 +62,153 @@ export class PaymentsService {
       if (existingPayment.status === "succeeded") {
         throw new BadRequestException("Order has already been paid");
       }
-      // Return existing payment intent
+
+      // Return existing checkout session if still valid
       if (existingPayment.stripePaymentId) {
-        return {
-          clientSecret: (
-            await this.stripe.paymentIntents.retrieve(
-              existingPayment.stripePaymentId,
-            )
-          ).client_secret,
-          paymentId: existingPayment.id,
-        };
+        try {
+          const session = await this.stripe.checkout.sessions.retrieve(
+            existingPayment.stripePaymentId,
+          );
+
+          // Check if session is still open (not expired)
+          if (session.status === "open") {
+            return {
+              success: true,
+              paymentId: existingPayment.id,
+              sessionId: session.id,
+              paymentLink: session.url,
+              expiresAt: new Date(session.expires_at * 1000).toISOString(),
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              amount: Number(order.totalAmount),
+              message: "Using existing payment session",
+            };
+          }
+        } catch (error) {
+          // Session might be expired or deleted, create a new one
+          console.log("Previous session not available, creating new one");
+        }
       }
     }
 
-    // Get or create Stripe customer
-    let customerId: string | null = null;
-    const buyer = order.buyer;
+    // Build success and cancel URLs with order info
+    const baseUrl =
+      this.configService.get<string>("FRONTEND_URL") || "https://example.com";
+    const successUrl = `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}&order_id=${order.id}`;
+    const cancelUrl = `${baseUrl}/payment/cancel?order_id=${order.id}`;
 
-    // Create payment intent
-    const paymentIntent = await this.stripe.checkout.sessions.create({
+    // Create checkout session
+    const checkoutSession = await this.stripe.checkout.sessions.create({
       mode: "payment",
       line_items: [
         {
           price_data: {
             currency: "usd",
             unit_amount: Math.round(Number(order.totalAmount) * 100),
-            product_data: { name: "This is a dummy Product" },
+            product_data: {
+              name: `Order #${order.orderNumber}`,
+              description: `Payment for order from ${order.vendor.storename}`,
+            },
           },
           quantity: 1,
         },
       ],
-      success_url: "https://example.com/success",
-      cancel_url: "https://example.com/failed",
+      // success_url: successUrl,
+      // cancel_url: cancelUrl,
+      success_url: "http://127.0.0.1:5500/test/payment/success/",
+      cancel_url: "http://127.0.0.1:5500/test/payment/cancle/",
       metadata: {
         orderId: order.id,
         buyerId: buyerId,
         vendorId: order.vendorId,
+        orderNumber: order.orderNumber,
       },
+      // customer_email: order.buyer.user.email,
+      expires_at: Math.floor(Date.now() / 1000) + 3600, // Expires in 1 hour
     });
 
-    // Create payment record
+    // Create or update payment record
     const payment = await this.prisma.payment.upsert({
       where: { orderId: order.id },
       update: {
-        stripePaymentId: paymentIntent.id,
-        stripeCustomerId: customerId,
+        stripePaymentId: checkoutSession.id,
+        stripeCustomerId: checkoutSession.customer as string | null,
         amount: order.totalAmount,
         status: "pending",
       },
       create: {
         orderId: order.id,
-        stripePaymentId: paymentIntent.id,
-        stripeCustomerId: customerId,
+        stripePaymentId: checkoutSession.id,
+        stripeCustomerId: checkoutSession.customer as string | null,
         amount: order.totalAmount,
         status: "pending",
       },
     });
 
     return {
-      clientSecret: paymentIntent.client_secret,
+      success: true,
       paymentId: payment.id,
-      paymentLink: paymentIntent.url,
-      hints: paymentIntent,
+      sessionId: checkoutSession.id,
+      paymentLink: checkoutSession.url,
+      expiresAt: new Date(checkoutSession.expires_at * 1000).toISOString(),
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      amount: Number(order.totalAmount),
     };
   }
 
-  async confirmPayment(paymentIntentId: string) {
+  async handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+    const orderId = session.metadata?.orderId;
+
+    if (!orderId) {
+      console.error("No orderId in session metadata");
+      return;
+    }
+
     const payment = await this.prisma.payment.findUnique({
-      where: { stripePaymentId: paymentIntentId },
+      where: { orderId },
       include: {
         order: true,
       },
     });
 
     if (!payment) {
-      throw new NotFoundException("Payment not found");
+      console.error(`Payment not found for order: ${orderId}`);
+      return;
     }
 
-    const paymentIntent =
-      await this.stripe.paymentIntents.retrieve(paymentIntentId);
+    // Update payment status
+    await this.prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: "succeeded",
+        stripeCustomerId: session.customer as string | null,
+      },
+    });
 
-    if (paymentIntent.status === "succeeded") {
-      // Update payment status
-      await this.prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: "succeeded",
-        },
-      });
+    // Update order status
+    await this.prisma.order.update({
+      where: { id: payment.orderId },
+      data: {
+        status: "processing",
+      },
+    });
 
-      // Update order status if it's still pending
-      if (payment.order.status === "pending") {
-        await this.prisma.order.update({
-          where: { id: payment.orderId },
-          data: {
-            status: "processing",
-          },
-        });
-      }
-    } else if (paymentIntent.status === "canceled") {
+    console.log(`Payment succeeded for order: ${orderId}`);
+  }
+
+  async handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
+    const orderId = session.metadata?.orderId;
+
+    if (!orderId) {
+      return;
+    }
+
+    const payment = await this.prisma.payment.findUnique({
+      where: { orderId },
+    });
+
+    if (payment && payment.status === "pending") {
       await this.prisma.payment.update({
         where: { id: payment.id },
         data: {
@@ -168,15 +216,18 @@ export class PaymentsService {
         },
       });
     }
-
-    return paymentIntent;
   }
 
   async getPaymentByOrderId(orderId: string) {
     const payment = await this.prisma.payment.findUnique({
       where: { orderId },
       include: {
-        order: true,
+        order: {
+          include: {
+            buyer: true,
+            vendor: true,
+          },
+        },
       },
     });
 
@@ -187,10 +238,32 @@ export class PaymentsService {
     return payment;
   }
 
+  async getPaymentStatus(sessionId: string) {
+    try {
+      const session = await this.stripe.checkout.sessions.retrieve(sessionId);
+
+      const payment = await this.prisma.payment.findUnique({
+        where: { stripePaymentId: sessionId },
+        include: {
+          order: true,
+        },
+      });
+
+      return {
+        sessionStatus: session.status,
+        paymentStatus: session.payment_status,
+        paymentRecord: payment,
+      };
+    } catch (error) {
+      throw new NotFoundException("Checkout session not found");
+    }
+  }
+
   async handleWebhook(signature: string, payload: Buffer) {
     const webhookSecret = this.configService.get<string>(
       "STRIPE_WEBHOOK_SECRET",
     );
+    console.log(signature, payload);
     if (!webhookSecret) {
       throw new Error("STRIPE_WEBHOOK_SECRET is not configured");
     }
@@ -209,24 +282,42 @@ export class PaymentsService {
       );
     }
 
-    // Handle the event
-    if (event.type === "payment_intent.succeeded") {
-      const paymentIntent = event.data.object as Stripe.PaymentIntent;
-      await this.confirmPayment(paymentIntent.id);
-    } else if (event.type === "payment_intent.payment_failed") {
-      const paymentIntent = event.data.object as Stripe.PaymentIntent;
-      const payment = await this.prisma.payment.findUnique({
-        where: { stripePaymentId: paymentIntent.id },
-      });
+    // Handle different event types
+    switch (event.type) {
+      case "checkout.session.completed":
+        const completedSession = event.data.object as Stripe.Checkout.Session;
+        await this.handleCheckoutSessionCompleted(completedSession);
+        break;
 
-      if (payment) {
-        await this.prisma.payment.update({
-          where: { id: payment.id },
-          data: {
-            status: "failed",
-          },
-        });
-      }
+      case "checkout.session.expired":
+        const expiredSession = event.data.object as Stripe.Checkout.Session;
+        await this.handleCheckoutSessionExpired(expiredSession);
+        break;
+
+      case "checkout.session.async_payment_succeeded":
+        const asyncSuccessSession = event.data
+          .object as Stripe.Checkout.Session;
+        await this.handleCheckoutSessionCompleted(asyncSuccessSession);
+        break;
+
+      case "checkout.session.async_payment_failed":
+        const asyncFailedSession = event.data.object as Stripe.Checkout.Session;
+        const orderId = asyncFailedSession.metadata?.orderId;
+        if (orderId) {
+          const payment = await this.prisma.payment.findUnique({
+            where: { orderId },
+          });
+          if (payment) {
+            await this.prisma.payment.update({
+              where: { id: payment.id },
+              data: { status: "failed" },
+            });
+          }
+        }
+        break;
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
     }
 
     return { received: true };
