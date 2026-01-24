@@ -215,7 +215,7 @@ export class AuthService {
             nationalIdNumber: data.nationalIdNumber,
             bussinessRegNumber: data.bussinessRegNumber,
             gender: data.gender,
-            vendorCode: this.generateVendorCode(),
+            // vendorCode: this.generateVendorCode(),
             bussinessIdPhotoUrl: businessIdResult?.secure_url || "",
           },
         });
