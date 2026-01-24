@@ -8,9 +8,6 @@ export class VendorRegisterDto {
   @IsString()
   phone: string;
 
-  // @IsEmail()
-  // email: string;
-
   @IsString()
   address: string;
 

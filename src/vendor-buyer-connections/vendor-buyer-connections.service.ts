@@ -89,6 +89,14 @@ export class VendorBuyerConnectionsService {
             logoUrl: true,
           },
         },
+        buyer: {
+          select: {
+            id: true,
+            fulllName: true,
+            cart: true,
+            userId: true,
+          },
+        },
       },
       orderBy: {
         connectedAt: "desc",
@@ -119,6 +127,11 @@ export class VendorBuyerConnectionsService {
                 email: true,
               },
             },
+          },
+        },
+        vendor: {
+          include: {
+            user: true,
           },
         },
       },

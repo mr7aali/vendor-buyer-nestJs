@@ -61,7 +61,7 @@ model Buyer {
 model Vendor {
   id                  String  @id @default(uuid())
   userId              String  @unique
-  vendorCode          String  @unique
+  vendorCode          String  @unique @default(dbgenerated("'VEN-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 8))"))
   fulllName           String
   phone               String
   // email               String  @unique
@@ -106,23 +106,6 @@ model Category {
   @@index([vendorId])
 }
 
-// ------------------------------completed part End-------------------------
-model VendorBuyerConnection {
-  id          String   @id @default(uuid())
-  vendorId    String
-  buyerId     String
-  isActive    Boolean  @default(true)
-  connectedAt DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  buyer       Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-
-  @@unique([vendorId, buyerId])
-  @@index([buyerId])
-  @@index([vendorId])
-}
-
 model Product {
   id             String          @id @default(uuid())
   vendorId       String
@@ -152,6 +135,23 @@ model Specification {
   label     String
   value     String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// ------------------------------completed part End-------------------------
+model VendorBuyerConnection {
+  id          String   @id @default(uuid())
+  vendorId    String
+  buyerId     String
+  isActive    Boolean  @default(true)
+  connectedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  buyer       Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, buyerId])
+  @@index([buyerId])
+  @@index([vendorId])
 }
 
 model Cart {
