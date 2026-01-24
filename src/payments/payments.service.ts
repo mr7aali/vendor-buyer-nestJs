@@ -111,6 +111,8 @@ export class PaymentsService {
     return {
       clientSecret: paymentIntent.client_secret,
       paymentId: payment.id,
+      paymentLink: paymentIntent.client_secret?.link,
+      hints: paymentIntent,
     };
   }
 

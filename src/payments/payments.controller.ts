@@ -10,6 +10,7 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  Delete,
 } from "@nestjs/common";
 import type { RawBodyRequest } from "@nestjs/common";
 // import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody, ApiHeader, ApiExcludeEndpoint } from '@nestjs/swagger';
@@ -30,35 +31,12 @@ export class PaymentsController {
     private readonly prisma: PrismaService,
   ) {}
 
+  // @ApiBody({ type: CreatePaymentDto })
   @Post("create-intent")
   @UseGuards(JwtAuthGuard)
   @Roles(UserType.BUYER)
-  @UseGuards(RolesGuard)
-  // @ApiBearerAuth("JWT-auth")
+  // @UseGuards(RolesGuard)
   @HttpCode(HttpStatus.CREATED)
-  // @ApiOperation({
-  //   summary: "Create payment intent",
-  //   description:
-  //     "Buyer only: Create a Stripe payment intent for an order. Returns client secret for frontend payment processing.",
-  // })
-  // @ApiResponse({
-  //   status: 201,
-  //   description: "Payment intent created successfully",
-  //   schema: {
-  //     example: { clientSecret: "pi_xxx_secret_xxx", paymentId: "uuid" },
-  //   },
-  // })
-  // @ApiResponse({
-  //   status: 400,
-  //   description: "Bad request - Order already paid or invalid order",
-  // })
-  // @ApiResponse({
-  //   status: 403,
-  //   description:
-  //     "Forbidden - Buyer access required or order does not belong to buyer",
-  // })
-  // @ApiResponse({ status: 404, description: "Order or buyer not found" })
-  // @ApiBody({ type: CreatePaymentDto })
   async createPaymentIntent(
     @Body() createPaymentDto: CreatePaymentDto,
     @GetUser() user: any,
@@ -108,5 +86,13 @@ export class PaymentsController {
     @Req() req: RawBodyRequest<Request>,
   ) {
     return this.paymentsService.handleWebhook(signature, req.rawBody as Buffer);
+  }
+  @Get()
+  async getAll() {
+    return this.prisma.payment.findMany({});
+  }
+  @Delete()
+  async getDelete() {
+    return this.prisma.payment.deleteMany({});
   }
 }

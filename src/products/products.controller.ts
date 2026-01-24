@@ -157,4 +157,9 @@ export class ProductsController {
 
     return this.productsService.remove(id, vendor.id);
   }
+
+  @Get()
+  async getAllProductForTest() {
+    return this.productsService.getAllProductForTest();
+  }
 }
