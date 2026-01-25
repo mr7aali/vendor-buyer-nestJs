@@ -137,6 +137,20 @@ model Specification {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
+model PasswordResetOtp {
+  id        String   @id @default(uuid())
+  email     String
+  otp       String
+  verified  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([email, otp])
+  @@map("password_reset_otp")
+}
+
 // ------------------------------completed part End-------------------------
 model VendorBuyerConnection {
   id          String   @id @default(uuid())
@@ -307,19 +321,4 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-}
-
-// NEW MODEL FOR PASSWORD RESET OTP
-model PasswordResetOtp {
-  id        String   @id @default(uuid())
-  email     String
-  otp       String
-  verified  Boolean  @default(false)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([email])
-  @@index([email, otp])
-  @@map("password_reset_otp")
 }

@@ -4,16 +4,22 @@ import { AppModule } from "./app.module";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import { ResponseInterceptor } from "./common/interceptors/response.interceptor";
+import bodyParser from "body-parser";
+import { SocketIoAdapter } from "./common/adapters/socket-io.adapter";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
 
   // Enable CORS
   app.enableCors({
     origin: true,
     credentials: true,
   });
-
+  // IMPORTANT: raw body for Stripe webhook
+  app.use("/payments/webhook", bodyParser.raw({ type: "application/json" }));
+  app.useWebSocketAdapter(new SocketIoAdapter(app));
   const config = new DocumentBuilder()
     .setTitle("E-commerce Admin Dashboard API")
     .setDescription(

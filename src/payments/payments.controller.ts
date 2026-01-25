@@ -1,3 +1,4 @@
+// import { request } from "supertest";
 import {
   Controller,
   Get,
@@ -62,9 +63,10 @@ export class PaymentsController {
   @HttpCode(HttpStatus.OK)
   async handleWebhook(
     @Headers("stripe-signature") signature: string,
-    @Req() req: RawBodyRequest<Request>,
+    @Req() req: Request,
   ) {
-    return this.paymentsService.handleWebhook(signature, req.rawBody as Buffer);
+    const rawBody = await req.body;
+    return this.paymentsService.handleWebhook(signature, rawBody as any);
   }
 
   // Development endpoints - remove in production
