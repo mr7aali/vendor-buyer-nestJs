@@ -137,6 +137,20 @@ model Specification {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
+model PasswordResetOtp {
+  id        String   @id @default(uuid())
+  email     String
+  otp       String
+  verified  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([email, otp])
+  @@map("password_reset_otp")
+}
+
 // ------------------------------completed part End-------------------------
 model VendorBuyerConnection {
   id          String   @id @default(uuid())
@@ -220,13 +234,20 @@ model OrderItem {
 model Payment {
   id               String   @id @default(uuid())
   orderId          String   @unique
-  stripePaymentId  String?  @unique
+  stripePaymentId  String?  @unique // This is the session ID
   stripeCustomerId String?
   amount           Decimal  @db.Decimal(10, 2)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   status           String
-  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // NEW: Add these fields for better tracking
+  paymentMethod  String? // e.g., "card", "wallet"
+  lastFourDigits String? // Last 4 digits of card (safe to store)
+  cardBrand      String? // e.g., "visa", "mastercard"
+  expiresAt      DateTime? // When the checkout session expires
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([stripePaymentId])
 }
@@ -300,19 +321,4 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-}
-
-// NEW MODEL FOR PASSWORD RESET OTP
-model PasswordResetOtp {
-  id        String   @id @default(uuid())
-  email     String
-  otp       String
-  verified  Boolean  @default(false)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([email])
-  @@index([email, otp])
-  @@map("password_reset_otp")
 }
