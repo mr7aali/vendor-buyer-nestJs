@@ -247,6 +247,10 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: loginDto.email },
+      include: {
+        buyer: true,
+        vendor: true,
+      },
     });
 
     if (!user) {
@@ -270,15 +274,37 @@ export class AuthService {
     // };
     // const accessToken = this.jwtService.sign(payload);
 
-    return {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        userType: user.userType,
-      },
-    };
+    if (user.userType === UserType.BUYER && user.buyer) {
+      return {
+        accessToken,
+        refreshToken,
+        user: {
+          id: user.buyer.id,
+          email: user.email,
+          userType: user.userType,
+        },
+      };
+    } else if (user.vendor && user.userType === UserType.VENDOR) {
+      return {
+        accessToken,
+        refreshToken,
+        user: {
+          id: user.vendor.id,
+          email: user.email,
+          userType: user.userType,
+        },
+      };
+    } else {
+      return {
+        accessToken,
+        refreshToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          userType: user.userType,
+        },
+      };
+    }
   }
 
   private async generateTokens(user: any) {
