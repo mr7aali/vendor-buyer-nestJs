@@ -1,23 +1,55 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
+import { ConfigService } from "@nestjs/config";
+import { PrismaService } from "src/prisma/prisma.service";
 
-// auth/strategies/admin-jwt.strategy.ts
+/**
+ * Admin JWT Strategy
+ * Validates admin JWT tokens and attaches admin data to the request
+ */
 @Injectable()
 export class AdminJwtStrategy extends PassportStrategy(Strategy, "admin-jwt") {
-  constructor(config: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private prisma: PrismaService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey:
-        config.get<string>("JWT_ADMIN_SECRET") || "default_admin_secret",
+      ignoreExpiration: false,
+      secretOrKey: configService.get("JWT_ADMIN_SECRET") || "JWT_ADMIN_SECRET",
     });
   }
 
   async validate(payload: any) {
+    // Verify it's an admin token
     if (payload.type !== "ADMIN") {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException("Invalid admin token");
     }
-    return payload;
+
+    // Fetch the latest admin data with permissions
+    const admin = await this.prisma.admin.findUnique({
+      where: { id: payload.sub },
+      include: {
+        permissions: {
+          include: {
+            permission: true,
+          },
+        },
+      },
+    });
+
+    if (!admin) {
+      throw new UnauthorizedException("Admin not found");
+    }
+
+    // Return admin data that will be attached to request.user
+    return {
+      id: admin.id,
+      email: admin.email,
+      role: admin.role,
+      type: "ADMIN",
+      permissions: admin.permissions.map((p) => p.permission.key),
+    };
   }
 }
