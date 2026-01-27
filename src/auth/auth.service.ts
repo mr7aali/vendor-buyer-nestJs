@@ -23,6 +23,7 @@ import {
 } from "./dto/forgot-password";
 import { ConfigService } from "@nestjs/config";
 import { AdminLoginDto } from "./dto/admin-login.dto";
+import { CreateSuperAdminDto } from "./dto/create-super-admin.dto";
 // import {
 //   ForgotPasswordDto,
 //   ResetPasswordDto,
@@ -348,6 +349,42 @@ export class AuthService {
         email: admin.email,
         role: admin.role,
         permissions: payload.permissions,
+      },
+    };
+  }
+  async createSuperAdmin(dto: CreateSuperAdminDto) {
+    const BOOTSTRAP_SECRET =
+      this.configService.get("SUPER_ADMIN_SECRET") || "INIT_SUPER_ADMIN";
+
+    if (dto.secret !== BOOTSTRAP_SECRET) {
+      throw new UnauthorizedException("Invalid bootstrap secret");
+    }
+
+    const exists = await this.prisma.admin.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (exists) {
+      throw new ConflictException("Super admin already exists");
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    const admin = await this.prisma.admin.create({
+      data: {
+        email: dto.email,
+        passwordHash,
+        role: "SUPER_ADMIN",
+      },
+    });
+
+    return {
+      success: true,
+      message: "Super admin created successfully",
+      admin: {
+        id: admin.id,
+        email: admin.email,
+        role: admin.role,
       },
     };
   }
