@@ -22,6 +22,7 @@ import {
   VerifyOtpDto,
 } from "./dto/forgot-password";
 import { ConfigService } from "@nestjs/config";
+import { AdminLoginDto } from "./dto/admin-login.dto";
 // import {
 //   ForgotPasswordDto,
 //   ResetPasswordDto,
@@ -305,6 +306,50 @@ export class AuthService {
         },
       };
     }
+  }
+  async adminLogin(dto: AdminLoginDto) {
+    const admin = await this.prisma.admin.findUnique({
+      where: { email: dto.email },
+      include: {
+        permissions: {
+          include: {
+            permission: true,
+          },
+        },
+      },
+    });
+
+    if (!admin) {
+      throw new UnauthorizedException("Invalid admin credentials");
+    }
+
+    const isValid = await bcrypt.compare(dto.password, admin.passwordHash);
+    if (!isValid) {
+      throw new UnauthorizedException("Invalid admin credentials");
+    }
+
+    const payload = {
+      sub: admin.id,
+      email: admin.email,
+      role: admin.role,
+      type: "ADMIN",
+      permissions: admin.permissions.map((p) => p.permission.key),
+    };
+
+    const accessToken = this.jwtService.sign(payload, {
+      secret: this.configService.get("JWT_ADMIN_SECRET"),
+      expiresIn: "1d",
+    });
+
+    return {
+      accessToken,
+      admin: {
+        id: admin.id,
+        email: admin.email,
+        role: admin.role,
+        permissions: payload.permissions,
+      },
+    };
   }
 
   private async generateTokens(user: any) {

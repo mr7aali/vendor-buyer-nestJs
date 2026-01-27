@@ -22,6 +22,9 @@ import {
   ResetPasswordDto,
   VerifyOtpDto,
 } from "./dto/forgot-password";
+import { AdminLoginDto } from "./dto/admin-login.dto";
+import { Permissions } from "./decorators/permissions.decorator";
+import { PermissionGuard } from "./guards/permission.guard";
 // import {
 //   ForgotPasswordDto,
 //   VerifyOtpDto,
@@ -103,18 +106,39 @@ export class AuthController {
   }
 
   // ==================== LOGIN ====================
-
+  // ================ admin dashboard start =============
   @Post("login")
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+  @Post("admin/login")
+  @HttpCode(HttpStatus.OK)
+  async adminLogin(@Body() dto: AdminLoginDto) {
+    return this.authService.adminLogin(dto);
   }
   @Post("refresh")
   @HttpCode(HttpStatus.OK)
   async refresh(@Body("refreshToken") refreshToken: string) {
     return this.authService.refreshTokens(refreshToken);
   }
-
+  @Get("admin/me")
+  getAdminProfile(@GetUser() admin: any) {
+    return admin;
+  }
+  @Get("dashboard")
+  @Permissions("dashboard.view")
+  @UseGuards(PermissionGuard)
+  getDashboard() {
+    return { message: "Admin dashboard access granted" };
+  }
+  @Post("create-employee")
+  @Permissions("admin.create")
+  @UseGuards(PermissionGuard)
+  async createEmployee() {
+    return { message: "Employee created" };
+  }
+  // ================ admin dashboard End =============
   // ==================== FORGOT PASSWORD FLOW ====================
 
   /**
