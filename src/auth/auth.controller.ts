@@ -123,6 +123,7 @@ export class AuthController {
   @Post("admin/login")
   @HttpCode(HttpStatus.OK)
   async adminLogin(@Body() dto: AdminLoginDto) {
+    console.log(dto);
     return this.authService.adminLogin(dto);
   }
 
@@ -308,5 +309,9 @@ export class AuthController {
   @Get("user")
   async getAlluser() {
     return this.authService.getAlluser();
+  }
+  @Get("admin")
+  async getAllAdminUser() {
+    return this.authService.getAllAdminUser();
   }
 }

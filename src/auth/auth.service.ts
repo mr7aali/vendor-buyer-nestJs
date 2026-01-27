@@ -323,7 +323,7 @@ export class AuthService {
       email: admin.email,
       role: admin.role,
       type: "ADMIN",
-      permissions: admin.permissions.map((p) => p.permission.key),
+      permissions: admin?.permissions?.map((p) => p?.permission?.key),
     };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -939,7 +939,7 @@ export class AuthService {
     }
   }
 
-  // ==================== OTHER METHODS ====================
+  // ==================== OTHER METHODS (TESTING) ====================
 
   private generateVendorCode(): string {
     const randomPart = uuidv4().substring(0, 8).toUpperCase();
@@ -965,5 +965,9 @@ export class AuthService {
         sentMessages: true,
       },
     });
+  }
+
+  async getAllAdminUser() {
+    return await this.prisma.admin.findMany({});
   }
 }
