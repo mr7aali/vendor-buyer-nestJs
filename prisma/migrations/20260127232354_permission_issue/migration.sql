@@ -1,3 +1,6 @@
+-- CreateEnum
+CREATE TYPE "AdminRole" AS ENUM ('SUPER_ADMIN', 'EMPLOYEE');
+
 -- CreateTable
 CREATE TABLE "user" (
     "id" TEXT NOT NULL,
@@ -43,7 +46,7 @@ CREATE TABLE "Buyer" (
 CREATE TABLE "Vendor" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "vendorCode" TEXT NOT NULL,
+    "vendorCode" TEXT NOT NULL DEFAULT 'VEN-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 8)),
     "fulllName" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
     "address" TEXT NOT NULL,
@@ -80,19 +83,6 @@ CREATE TABLE "Category" (
 );
 
 -- CreateTable
-CREATE TABLE "VendorBuyerConnection" (
-    "id" TEXT NOT NULL,
-    "vendorId" TEXT NOT NULL,
-    "buyerId" TEXT NOT NULL,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "connectedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "VendorBuyerConnection_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "Product" (
     "id" TEXT NOT NULL,
     "vendorId" TEXT NOT NULL,
@@ -108,6 +98,42 @@ CREATE TABLE "Product" (
     "images" TEXT[],
 
     CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Specification" (
+    "id" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+
+    CONSTRAINT "Specification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "password_reset_otp" (
+    "id" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "otp" TEXT NOT NULL,
+    "verified" BOOLEAN NOT NULL DEFAULT false,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "password_reset_otp_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VendorBuyerConnection" (
+    "id" TEXT NOT NULL,
+    "vendorId" TEXT NOT NULL,
+    "buyerId" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "connectedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "VendorBuyerConnection_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -175,6 +201,10 @@ CREATE TABLE "Payment" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "status" TEXT NOT NULL,
+    "paymentMethod" TEXT,
+    "lastFourDigits" TEXT,
+    "cardBrand" TEXT,
+    "expiresAt" TIMESTAMP(3),
 
     CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
 );
@@ -241,16 +271,33 @@ CREATE TABLE "Notification" (
 );
 
 -- CreateTable
-CREATE TABLE "password_reset_otp" (
-    "id" TEXT NOT NULL,
+CREATE TABLE "Admin" (
+    "id" SERIAL NOT NULL,
     "email" TEXT NOT NULL,
-    "otp" TEXT NOT NULL,
-    "verified" BOOLEAN NOT NULL DEFAULT false,
-    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "passwordHash" TEXT NOT NULL,
+    "role" "AdminRole" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "password_reset_otp_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Admin_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Permission" (
+    "id" SERIAL NOT NULL,
+    "key" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+
+    CONSTRAINT "Permission_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AdminPermission" (
+    "adminId" INTEGER NOT NULL,
+    "permissionId" INTEGER NOT NULL,
+
+    CONSTRAINT "AdminPermission_pkey" PRIMARY KEY ("adminId","permissionId")
 );
 
 -- CreateIndex
@@ -269,6 +316,18 @@ CREATE UNIQUE INDEX "Vendor_vendorCode_key" ON "Vendor"("vendorCode");
 CREATE INDEX "Category_vendorId_idx" ON "Category"("vendorId");
 
 -- CreateIndex
+CREATE INDEX "Product_vendorId_idx" ON "Product"("vendorId");
+
+-- CreateIndex
+CREATE INDEX "Product_categoryId_idx" ON "Product"("categoryId");
+
+-- CreateIndex
+CREATE INDEX "password_reset_otp_email_idx" ON "password_reset_otp"("email");
+
+-- CreateIndex
+CREATE INDEX "password_reset_otp_email_otp_idx" ON "password_reset_otp"("email", "otp");
+
+-- CreateIndex
 CREATE INDEX "VendorBuyerConnection_buyerId_idx" ON "VendorBuyerConnection"("buyerId");
 
 -- CreateIndex
@@ -276,12 +335,6 @@ CREATE INDEX "VendorBuyerConnection_vendorId_idx" ON "VendorBuyerConnection"("ve
 
 -- CreateIndex
 CREATE UNIQUE INDEX "VendorBuyerConnection_vendorId_buyerId_key" ON "VendorBuyerConnection"("vendorId", "buyerId");
-
--- CreateIndex
-CREATE INDEX "Product_vendorId_idx" ON "Product"("vendorId");
-
--- CreateIndex
-CREATE INDEX "Product_categoryId_idx" ON "Product"("categoryId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Cart_buyerId_key" ON "Cart"("buyerId");
@@ -341,10 +394,10 @@ CREATE INDEX "Message_vendorId_buyerId_idx" ON "Message"("vendorId", "buyerId");
 CREATE INDEX "Notification_userId_idx" ON "Notification"("userId");
 
 -- CreateIndex
-CREATE INDEX "password_reset_otp_email_idx" ON "password_reset_otp"("email");
+CREATE UNIQUE INDEX "Admin_email_key" ON "Admin"("email");
 
 -- CreateIndex
-CREATE INDEX "password_reset_otp_email_otp_idx" ON "password_reset_otp"("email", "otp");
+CREATE UNIQUE INDEX "Permission_key_key" ON "Permission"("key");
 
 -- AddForeignKey
 ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -359,16 +412,19 @@ ALTER TABLE "Vendor" ADD CONSTRAINT "Vendor_userId_fkey" FOREIGN KEY ("userId") 
 ALTER TABLE "Category" ADD CONSTRAINT "Category_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "VendorBuyerConnection" ADD CONSTRAINT "VendorBuyerConnection_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "VendorBuyerConnection" ADD CONSTRAINT "VendorBuyerConnection_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Product" ADD CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Product" ADD CONSTRAINT "Product_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Specification" ADD CONSTRAINT "Specification_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VendorBuyerConnection" ADD CONSTRAINT "VendorBuyerConnection_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VendorBuyerConnection" ADD CONSTRAINT "VendorBuyerConnection_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Cart" ADD CONSTRAINT "Cart_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -420,3 +476,9 @@ ALTER TABLE "Message" ADD CONSTRAINT "Message_vendorId_fkey" FOREIGN KEY ("vendo
 
 -- AddForeignKey
 ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AdminPermission" ADD CONSTRAINT "AdminPermission_adminId_fkey" FOREIGN KEY ("adminId") REFERENCES "Admin"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AdminPermission" ADD CONSTRAINT "AdminPermission_permissionId_fkey" FOREIGN KEY ("permissionId") REFERENCES "Permission"("id") ON DELETE CASCADE ON UPDATE CASCADE;

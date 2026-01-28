@@ -8,6 +8,10 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFiles,
+  Param,
+  ParseIntPipe,
+  Delete,
+  Patch,
 } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
@@ -22,11 +26,17 @@ import {
   ResetPasswordDto,
   VerifyOtpDto,
 } from "./dto/forgot-password";
-// import {
-//   ForgotPasswordDto,
-//   VerifyOtpDto,
-//   ResetPasswordDto,
-// } from "./dto/forgot-password.dto";
+import { AdminLoginDto } from "./dto/admin-login.dto";
+import { Permissions } from "./decorators/permissions.decorator";
+import { PermissionGuard } from "./guards/permission.guard";
+import { CreateSuperAdminDto } from "./dto/create-super-admin.dto";
+import { AdminAuthGuard } from "./guards/admin-auth.guard";
+import {
+  CreateEmployeeDto,
+  UpdateEmployeePermissionsDto,
+} from "./dto/Employee.dto";
+// import { CreateEmployeeDto } from "./dto/create-employee.dto";
+// import { UpdateEmployeePermissionsDto } from "./dto/update-employee-permissions.dto";
 
 @Controller("auth")
 export class AuthController {
@@ -109,38 +119,168 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
+
+  @Post("admin/login")
+  @HttpCode(HttpStatus.OK)
+  async adminLogin(@Body() dto: AdminLoginDto) {
+    return this.authService.adminLogin(dto);
+  }
+
   @Post("refresh")
   @HttpCode(HttpStatus.OK)
   async refresh(@Body("refreshToken") refreshToken: string) {
     return this.authService.refreshTokens(refreshToken);
   }
 
-  // ==================== FORGOT PASSWORD FLOW ====================
+  // ==================== ADMIN DASHBOARD MANAGEMENT ====================
 
   /**
-   * Step 1: Request OTP for password reset
-   * Send OTP to user's email
+   * Get current admin profile
    */
+  @Get("admin/me")
+  @UseGuards(AdminAuthGuard)
+  getAdminProfile(@GetUser() admin: any) {
+    return admin;
+  }
+
+  /**
+   * Bootstrap super admin (one-time setup)
+   */
+  @Post("admin/bootstrap")
+  @HttpCode(HttpStatus.CREATED)
+  async bootstrapSuperAdmin(@Body() dto: CreateSuperAdminDto) {
+    return this.authService.createSuperAdmin(dto);
+  }
+
+  /**
+   * Create a new employee/admin
+   * Only SUPER_ADMIN can create employees
+   */
+  @Post("admin/employee")
+  @UseGuards(AdminAuthGuard, PermissionGuard)
+  @Permissions("admin.create")
+  @HttpCode(HttpStatus.CREATED)
+  async createEmployee(@Body() dto: CreateEmployeeDto) {
+    return this.authService.createEmployee(dto);
+  }
+
+  /**
+   * Get all employees/admins
+   */
+  @Get("admin/employees")
+  @UseGuards(AdminAuthGuard, PermissionGuard)
+  @Permissions("admin.view")
+  async getAllEmployees() {
+    return this.authService.getAllEmployees();
+  }
+
+  /**
+   * Get a specific employee by ID
+   */
+  @Get("admin/employee/:employeeId")
+  @UseGuards(AdminAuthGuard, PermissionGuard)
+  @Permissions("admin.view")
+  async getEmployee(@Param("employeeId", ParseIntPipe) employeeId: number) {
+    return this.authService.getEmployeeById(employeeId);
+  }
+
+  /**
+   * Update employee permissions
+   * Assign or revoke specific page access permissions
+   */
+  @Patch("admin/employee/:employeeId/permissions")
+  @UseGuards(AdminAuthGuard, PermissionGuard)
+  @Permissions("admin.permission.assign")
+  async updateEmployeePermissions(
+    @Param("employeeId", ParseIntPipe) employeeId: number,
+    @Body() dto: UpdateEmployeePermissionsDto,
+  ) {
+    return this.authService.updateEmployeePermissions(
+      employeeId,
+      dto.permissions,
+    );
+  }
+
+  /**
+   * Delete an employee
+   */
+  @Delete("admin/employee/:employeeId")
+  @UseGuards(AdminAuthGuard, PermissionGuard)
+  @Permissions("admin.delete")
+  async deleteEmployee(@Param("employeeId", ParseIntPipe) employeeId: number) {
+    return this.authService.deleteEmployee(employeeId);
+  }
+
+  /**
+   * Get all available permissions
+   */
+  @Get("admin/permissions")
+  @UseGuards(AdminAuthGuard)
+  async getAllPermissions() {
+    return this.authService.getAllPermissions();
+  }
+
+  /**
+   * Seed initial permissions (development only)
+   */
+  @Post("admin/permissions/seed")
+  @UseGuards(AdminAuthGuard, PermissionGuard)
+  @Permissions("admin.permission.seed")
+  async seedPermissions() {
+    return this.authService.seedPermissions();
+  }
+
+  // ==================== EXAMPLE PROTECTED ROUTES ====================
+
+  @Get("admin/dashboard")
+  @UseGuards(AdminAuthGuard, PermissionGuard)
+  @Permissions("dashboard.view")
+  getDashboard() {
+    return { message: "Dashboard access granted", success: true };
+  }
+
+  @Get("admin/users")
+  @UseGuards(AdminAuthGuard, PermissionGuard)
+  @Permissions("users.view")
+  getUsersPage() {
+    return { message: "Users page access granted", success: true };
+  }
+
+  @Get("admin/products")
+  @UseGuards(AdminAuthGuard, PermissionGuard)
+  @Permissions("products.view")
+  getProductsPage() {
+    return { message: "Products page access granted", success: true };
+  }
+
+  @Get("admin/orders")
+  @UseGuards(AdminAuthGuard, PermissionGuard)
+  @Permissions("orders.view")
+  getOrdersPage() {
+    return { message: "Orders page access granted", success: true };
+  }
+
+  @Get("admin/reports")
+  @UseGuards(AdminAuthGuard, PermissionGuard)
+  @Permissions("reports.view")
+  getReportsPage() {
+    return { message: "Reports page access granted", success: true };
+  }
+
+  // ==================== FORGOT PASSWORD FLOW ====================
+
   @Post("forgot-password")
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.forgotPassword(forgotPasswordDto);
   }
 
-  /**
-   * Step 2: Verify OTP sent to email
-   * Optional but recommended step before resetting password
-   */
   @Post("verify-otp")
   @HttpCode(HttpStatus.OK)
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
     return this.authService.verifyOtp(verifyOtpDto);
   }
 
-  /**
-   * Step 3: Reset password with verified OTP
-   * User must provide email, OTP, new password and confirm password
-   */
   @Post("reset-password")
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
@@ -168,5 +308,9 @@ export class AuthController {
   @Get("user")
   async getAlluser() {
     return this.authService.getAlluser();
+  }
+  @Get("admin")
+  async getAllAdminUser() {
+    return this.authService.getAllAdminUser();
   }
 }

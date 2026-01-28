@@ -322,3 +322,36 @@ model Notification {
 
   @@index([userId])
 }
+
+enum AdminRole {
+  SUPER_ADMIN
+  EMPLOYEE
+}
+
+model Admin {
+  id           Int               @id @default(autoincrement())
+  email        String            @unique
+  passwordHash String
+  role         AdminRole
+  permissions  AdminPermission[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+model Permission {
+  id          Int               @id @default(autoincrement())
+  key         String            @unique // e.g. "dashboard.view"
+  name        String
+  description String?
+  admins      AdminPermission[]
+}
+
+model AdminPermission {
+  adminId      Int
+  permissionId Int
+
+  admin      Admin      @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([adminId, permissionId])
+}

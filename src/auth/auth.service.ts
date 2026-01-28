@@ -4,6 +4,7 @@ import {
   ConflictException,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "../prisma/prisma.service";
@@ -22,11 +23,10 @@ import {
   VerifyOtpDto,
 } from "./dto/forgot-password";
 import { ConfigService } from "@nestjs/config";
-// import {
-//   ForgotPasswordDto,
-//   ResetPasswordDto,
-//   VerifyOtpDto,
-// } from "./dto/forgot-password.dto";
+import { AdminLoginDto } from "./dto/admin-login.dto";
+import { CreateSuperAdminDto } from "./dto/create-super-admin.dto";
+import { CreateEmployeeDto } from "./dto/Employee.dto";
+// import { CreateEmployeeDto } from "./dto/create-employee.dto";
 
 @Injectable()
 export class AuthService {
@@ -125,7 +125,6 @@ export class AuthService {
           data: {
             userId: userId,
             fulllName: data.fullName,
-            // email: data.email,
             phone: data.phone,
             nidNumber: data.nidNumber,
             nidFontPhotoUrl: nidFontUrl.secure_url,
@@ -204,7 +203,6 @@ export class AuthService {
           data: {
             userId: userId,
             fulllName: data.fulllName,
-            // email: data.email,
             phone: data.phone,
             address: data.address,
             storename: data.storename,
@@ -215,7 +213,6 @@ export class AuthService {
             nationalIdNumber: data.nationalIdNumber,
             bussinessRegNumber: data.bussinessRegNumber,
             gender: data.gender,
-            // vendorCode: this.generateVendorCode(),
             bussinessIdPhotoUrl: businessIdResult?.secure_url || "",
           },
         });
@@ -231,7 +228,6 @@ export class AuthService {
         return {
           id: vendor.id,
           fulllName: vendor.fulllName,
-          // email: vendor.email,
           storename: vendor.storename,
           vendorCode: vendor.vendorCode,
           message: "Vendor registered successfully",
@@ -267,12 +263,6 @@ export class AuthService {
     }
     const { accessToken, refreshToken } = await this.generateTokens(user);
     await this.storeRefreshToken(user.id, refreshToken);
-    // const payload = {
-    //   sub: user.id,
-    //   email: user.email,
-    //   userType: user.userType,
-    // };
-    // const accessToken = this.jwtService.sign(payload);
 
     if (user.userType === UserType.BUYER && user.buyer) {
       return {
@@ -307,6 +297,510 @@ export class AuthService {
     }
   }
 
+  async adminLogin(dto: AdminLoginDto) {
+    const admin = await this.prisma.admin.findUnique({
+      where: { email: dto.email },
+      include: {
+        permissions: {
+          include: {
+            permission: true,
+          },
+        },
+      },
+    });
+
+    if (!admin) {
+      throw new UnauthorizedException("Invalid admin credentials");
+    }
+
+    const isValid = await bcrypt.compare(dto.password, admin.passwordHash);
+    if (!isValid) {
+      throw new UnauthorizedException("Invalid admin credentials");
+    }
+
+    const payload = {
+      sub: admin.id,
+      email: admin.email,
+      role: admin.role,
+      type: "ADMIN",
+      permissions: admin?.permissions?.map((p) => p?.permission?.key),
+    };
+
+    const accessToken = this.jwtService.sign(payload, {
+      secret: this.configService.get("JWT_ADMIN_ACCESS_SECRET"),
+      expiresIn: "1d",
+    });
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.get("JWT_ADMIN_REFRESH_SECRET"),
+      expiresIn: "1d",
+    });
+    return {
+      accessToken,
+      admin: {
+        id: admin.id,
+        email: admin.email,
+        role: admin.role,
+        permissions: payload.permissions,
+      },
+    };
+  }
+
+  async createSuperAdmin(dto: CreateSuperAdminDto) {
+    const BOOTSTRAP_SECRET =
+      this.configService.get("SUPER_ADMIN_SECRET") || "INIT_SUPER_ADMIN";
+
+    if (dto.secret !== BOOTSTRAP_SECRET) {
+      throw new UnauthorizedException("Invalid bootstrap secret");
+    }
+
+    const exists = await this.prisma.admin.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (exists) {
+      throw new ConflictException("Super admin already exists");
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    const admin = await this.prisma.admin.create({
+      data: {
+        email: dto.email,
+        passwordHash,
+        role: "SUPER_ADMIN",
+      },
+    });
+
+    return {
+      success: true,
+      message: "Super admin created successfully",
+      admin: {
+        id: admin.id,
+        email: admin.email,
+        role: admin.role,
+      },
+    };
+  }
+
+  // ==================== EMPLOYEE MANAGEMENT ====================
+
+  /**
+   * Create a new employee (admin with EMPLOYEE role)
+   */
+  async createEmployee(dto: CreateEmployeeDto) {
+    // Check if email already exists
+    const existingAdmin = await this.prisma.admin.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (existingAdmin) {
+      throw new ConflictException("Employee with this email already exists");
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    // Create employee
+    const employee = await this.prisma.admin.create({
+      data: {
+        email: dto.email,
+        passwordHash,
+        role: "EMPLOYEE",
+      },
+    });
+
+    // Assign initial permissions if provided
+    if (dto.permissions && dto.permissions.length > 0) {
+      await this.updateEmployeePermissions(employee.id, dto.permissions);
+    }
+
+    return {
+      success: true,
+      message: "Employee created successfully",
+      employee: {
+        id: employee.id,
+        email: employee.email,
+        role: employee.role,
+      },
+    };
+  }
+
+  /**
+   * Get all employees
+   */
+  async getAllEmployees() {
+    const employees = await this.prisma.admin.findMany({
+      where: {
+        role: "EMPLOYEE",
+      },
+      include: {
+        permissions: {
+          include: {
+            permission: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return employees.map((employee) => ({
+      id: employee.id,
+      email: employee.email,
+      role: employee.role,
+      createdAt: employee.createdAt,
+      permissions: employee.permissions.map((p) => ({
+        id: p.permission.id,
+        key: p.permission.key,
+        name: p.permission.name,
+        description: p.permission.description,
+      })),
+    }));
+  }
+
+  /**
+   * Get employee by ID
+   */
+  async getEmployeeById(employeeId: number) {
+    const employee = await this.prisma.admin.findUnique({
+      where: { id: employeeId },
+      include: {
+        permissions: {
+          include: {
+            permission: true,
+          },
+        },
+      },
+    });
+
+    if (!employee) {
+      throw new NotFoundException("Employee not found");
+    }
+
+    return {
+      id: employee.id,
+      email: employee.email,
+      role: employee.role,
+      createdAt: employee.createdAt,
+      permissions: employee.permissions.map((p) => ({
+        id: p.permission.id,
+        key: p.permission.key,
+        name: p.permission.name,
+        description: p.permission.description,
+      })),
+    };
+  }
+
+  /**
+   * Update employee permissions
+   */
+  async updateEmployeePermissions(
+    employeeId: number,
+    permissionKeys: string[],
+  ) {
+    // Verify employee exists
+    const employee = await this.prisma.admin.findUnique({
+      where: { id: employeeId },
+    });
+
+    if (!employee) {
+      throw new NotFoundException("Employee not found");
+    }
+
+    // Cannot modify super admin permissions
+    if (employee.role === "SUPER_ADMIN") {
+      throw new ForbiddenException("Cannot modify super admin permissions");
+    }
+
+    // Get permission records
+    const permissionRecords = await this.prisma.permission.findMany({
+      where: { key: { in: permissionKeys } },
+    });
+
+    // Verify all permissions exist
+    if (permissionRecords.length !== permissionKeys.length) {
+      const foundKeys = permissionRecords.map((p) => p.key);
+      const missingKeys = permissionKeys.filter((k) => !foundKeys.includes(k));
+      throw new BadRequestException(
+        `Invalid permission keys: ${missingKeys.join(", ")}`,
+      );
+    }
+
+    // Delete existing permissions
+    await this.prisma.adminPermission.deleteMany({
+      where: { adminId: employeeId },
+    });
+
+    // Create new permissions
+    if (permissionRecords.length > 0) {
+      await this.prisma.adminPermission.createMany({
+        data: permissionRecords.map((p) => ({
+          adminId: employeeId,
+          permissionId: p.id,
+        })),
+      });
+    }
+
+    return {
+      success: true,
+      message: "Employee permissions updated successfully",
+      permissions: permissionRecords.map((p) => ({
+        key: p.key,
+        name: p.name,
+      })),
+    };
+  }
+
+  /**
+   * Delete employee
+   */
+  async deleteEmployee(employeeId: number) {
+    const employee = await this.prisma.admin.findUnique({
+      where: { id: employeeId },
+    });
+
+    if (!employee) {
+      throw new NotFoundException("Employee not found");
+    }
+
+    // Cannot delete super admin
+    if (employee.role === "SUPER_ADMIN") {
+      throw new ForbiddenException("Cannot delete super admin");
+    }
+
+    // Delete employee and their permissions (cascade)
+    await this.prisma.admin.delete({
+      where: { id: employeeId },
+    });
+
+    return {
+      success: true,
+      message: "Employee deleted successfully",
+    };
+  }
+
+  /**
+   * Get all available permissions
+   */
+  async getAllPermissions() {
+    const permissions = await this.prisma.permission.findMany({
+      orderBy: {
+        key: "asc",
+      },
+    });
+
+    return permissions;
+  }
+
+  /**
+   * Seed initial permissions (for development/setup)
+   */
+  async seedPermissions() {
+    const permissions = [
+      // Dashboard
+      {
+        key: "dashboard.view",
+        name: "View Dashboard",
+        description: "Access to main dashboard",
+      },
+
+      // Analytics
+      {
+        key: "analytics.view",
+        name: "View Analytics",
+        description: "View analytics, charts, and insights",
+      },
+
+      // Buyers Management
+      {
+        key: "buyers.view",
+        name: "View Buyers",
+        description: "View buyer list and buyer details",
+      },
+      {
+        key: "buyers.create",
+        name: "Create Buyer",
+        description: "Create new buyer accounts",
+      },
+      {
+        key: "buyers.edit",
+        name: "Edit Buyer",
+        description: "Edit existing buyer information",
+      },
+      {
+        key: "buyers.delete",
+        name: "Delete Buyer",
+        description: "Delete buyer accounts",
+      },
+
+      // Vendors Management
+      {
+        key: "vendors.view",
+        name: "View Vendors",
+        description: "View vendor list and vendor details",
+      },
+      {
+        key: "vendors.create",
+        name: "Create Vendor",
+        description: "Create new vendor accounts",
+      },
+      {
+        key: "vendors.edit",
+        name: "Edit Vendor",
+        description: "Edit vendor information",
+      },
+      {
+        key: "vendors.delete",
+        name: "Delete Vendor",
+        description: "Delete vendor accounts",
+      },
+
+      // Orders Management
+      {
+        key: "orders.view",
+        name: "View Orders",
+        description: "View orders list and order details",
+      },
+      {
+        key: "orders.edit",
+        name: "Edit Orders",
+        description: "Update order status and details",
+      },
+      {
+        key: "orders.cancel",
+        name: "Cancel Orders",
+        description: "Cancel or reject orders",
+      },
+
+      // Transactions
+      {
+        key: "transactions.view",
+        name: "View Transactions",
+        description: "View payment and transaction history",
+      },
+      {
+        key: "transactions.refund",
+        name: "Refund Transactions",
+        description: "Initiate refunds for transactions",
+      },
+
+      // Verification (KYC / Approval)
+      {
+        key: "verification.view",
+        name: "View Verifications",
+        description: "View verification requests",
+      },
+      {
+        key: "verification.approve",
+        name: "Approve Verification",
+        description: "Approve buyer/vendor verification",
+      },
+      {
+        key: "verification.reject",
+        name: "Reject Verification",
+        description: "Reject buyer/vendor verification",
+      },
+
+      // Permissions & Roles
+      {
+        key: "permissions.view",
+        name: "View Permissions",
+        description: "View roles and permission list",
+      },
+      {
+        key: "permissions.assign",
+        name: "Assign Permissions",
+        description: "Assign permissions to users or roles",
+      },
+      {
+        key: "permissions.manage",
+        name: "Manage Permissions",
+        description: "Create, update, or delete permissions",
+      },
+
+      // Settings
+      {
+        key: "settings.view",
+        name: "View Settings",
+        description: "View system and application settings",
+      },
+      {
+        key: "settings.update",
+        name: "Update Settings",
+        description: "Update system and application settings",
+      },
+
+      // Chats / Messaging
+      {
+        key: "chats.view",
+        name: "View Chats",
+        description: "View user chats and conversations",
+      },
+      {
+        key: "chats.send",
+        name: "Send Messages",
+        description: "Send messages to users",
+      },
+      {
+        key: "chats.moderate",
+        name: "Moderate Chats",
+        description: "Monitor or moderate chat messages",
+      },
+
+      // Notifications
+      {
+        key: "notifications.view",
+        name: "View Notifications",
+        description: "View system and user notifications",
+      },
+      {
+        key: "notifications.send",
+        name: "Send Notifications",
+        description: "Send notifications to users",
+      },
+
+      // Account (Admin / Employee Account)
+      {
+        key: "account.view",
+        name: "View Account",
+        description: "View own account details",
+      },
+      {
+        key: "account.update",
+        name: "Update Account",
+        description: "Update own account information",
+      },
+      {
+        key: "account.password.change",
+        name: "Change Password",
+        description: "Change account password",
+      },
+    ];
+
+    const created: any[] = [];
+    for (const permission of permissions) {
+      const existing = await this.prisma.permission.findUnique({
+        where: { key: permission.key },
+      });
+
+      if (!existing) {
+        const created_permission = await this.prisma.permission.create({
+          data: permission,
+        });
+        created.push(created_permission);
+      }
+    }
+
+    return {
+      success: true,
+      message: `${created.length} permissions seeded successfully`,
+      permissions: created,
+    };
+  }
+
+  // ==================== TOKEN MANAGEMENT ====================
+
   private async generateTokens(user: any) {
     const payload = {
       sub: user.id,
@@ -316,7 +810,6 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get("JWT_ACCESS_SECRET") || "bangladesh_1971",
-      // expiresIn: "15m",
       expiresIn: "1d",
     });
 
@@ -326,6 +819,7 @@ export class AuthService {
     });
     return { accessToken, refreshToken };
   }
+
   private async storeRefreshToken(userId: string, refreshToken: string) {
     const tokenHash = await bcrypt.hash(refreshToken, 10);
 
@@ -337,6 +831,7 @@ export class AuthService {
       },
     });
   }
+
   async refreshTokens(refreshToken: string) {
     let payload;
     if (!refreshToken) {
@@ -391,7 +886,6 @@ export class AuthService {
   // ==================== FORGOT PASSWORD METHODS ====================
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
-    // Check if user exists
     const user = await this.prisma.user.findUnique({
       where: { email: forgotPasswordDto.email },
     });
@@ -400,16 +894,13 @@ export class AuthService {
       throw new NotFoundException("User with this email does not exist");
     }
 
-    // Delete any existing OTPs for this email
     await this.prisma.passwordResetOtp.deleteMany({
       where: { email: forgotPasswordDto.email },
     });
 
-    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Store OTP in database with 10-minute expiration
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
     await this.prisma.passwordResetOtp.create({
       data: {
         email: forgotPasswordDto.email,
@@ -419,7 +910,6 @@ export class AuthService {
       },
     });
 
-    // Send OTP via email
     await this.emailService.sendOtpEmail(forgotPasswordDto.email, otp);
 
     return {
@@ -430,7 +920,6 @@ export class AuthService {
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
-    // Find the most recent OTP for this email
     const otpRecord = await this.prisma.passwordResetOtp.findFirst({
       where: {
         email: verifyOtpDto.email,
@@ -445,7 +934,6 @@ export class AuthService {
       throw new BadRequestException("Invalid OTP");
     }
 
-    // Check if OTP has expired
     if (new Date() > otpRecord.expiresAt) {
       await this.prisma.passwordResetOtp.delete({
         where: { id: otpRecord.id },
@@ -455,7 +943,6 @@ export class AuthService {
       );
     }
 
-    // Mark OTP as verified
     await this.prisma.passwordResetOtp.update({
       where: { id: otpRecord.id },
       data: { verified: true },
@@ -469,7 +956,6 @@ export class AuthService {
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
-    // Find the most recent OTP for this email
     const otpRecord = await this.prisma.passwordResetOtp.findFirst({
       where: {
         email: resetPasswordDto.email,
@@ -484,7 +970,6 @@ export class AuthService {
       throw new BadRequestException("Invalid OTP");
     }
 
-    // Check if OTP has expired
     if (new Date() > otpRecord.expiresAt) {
       await this.prisma.passwordResetOtp.delete({
         where: { id: otpRecord.id },
@@ -494,28 +979,23 @@ export class AuthService {
       );
     }
 
-    // Check if OTP was verified
     if (!otpRecord.verified) {
       throw new BadRequestException(
         "OTP not verified. Please verify OTP first",
       );
     }
 
-    // Validate password match
     if (resetPasswordDto.newPassword !== resetPasswordDto.confirmPassword) {
       throw new BadRequestException("Passwords do not match");
     }
 
-    // Hash new password
     const passwordHash = await bcrypt.hash(resetPasswordDto.newPassword, 10);
 
-    // Update user password
     await this.prisma.user.update({
       where: { email: resetPasswordDto.email },
       data: { passwordHash },
     });
 
-    // Delete all OTPs for this email
     await this.prisma.passwordResetOtp.deleteMany({
       where: { email: resetPasswordDto.email },
     });
@@ -527,7 +1007,6 @@ export class AuthService {
     };
   }
 
-  // Clean up expired OTPs (runs automatically every hour)
   private async cleanupExpiredOtps() {
     try {
       const result = await this.prisma.passwordResetOtp.deleteMany({
@@ -545,7 +1024,7 @@ export class AuthService {
     }
   }
 
-  // ==================== OTHER METHODS ====================
+  // ==================== OTHER METHODS (TESTING) ====================
 
   private generateVendorCode(): string {
     const randomPart = uuidv4().substring(0, 8).toUpperCase();
@@ -571,5 +1050,9 @@ export class AuthService {
         sentMessages: true,
       },
     });
+  }
+
+  async getAllAdminUser() {
+    return await this.prisma.admin.findMany({});
   }
 }

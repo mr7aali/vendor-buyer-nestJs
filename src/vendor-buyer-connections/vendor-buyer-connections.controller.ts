@@ -26,6 +26,8 @@ import { UserType } from "../auth/dto/register.dto";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { GetUser } from "../auth/decorators/get-user.decorator";
 import { ConnectVendorDto } from "./dto/connect-vendor.dto";
+import QRCode from "qrcode";
+import { ConfigService } from "@nestjs/config";
 
 @Controller("connections")
 @UseGuards(JwtAuthGuard)
@@ -33,6 +35,7 @@ export class VendorBuyerConnectionsController {
   constructor(
     private readonly connectionsService: VendorBuyerConnectionsService,
     private readonly prisma: PrismaService,
+    private configService: ConfigService,
   ) {}
 
   @Post("connect")
@@ -75,7 +78,19 @@ export class VendorBuyerConnectionsController {
       return this.connectionsService.getVendorConnections(vendor.id);
     }
   }
+  @Get("qr/:vendorId")
+  async generateQr(@Param("vendorId") vendorId: string) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { id: vendorId },
+    });
+    if (!vendor) throw new Error("Vendor not found");
 
+    // Encode just vendorCode in QR
+    const qrUrl = `${this.configService.get<string>("APP_BASE_URL")}/vendor-qr?vendorCode=${vendor.vendorCode}`;
+    const qrDataUrl = await QRCode.toDataURL(qrUrl);
+
+    return { qrDataUrl, vendorCode: vendor.vendorCode };
+  }
   @Delete("disconnect/:vendorId")
   @Roles(UserType.BUYER)
   @UseGuards(RolesGuard)
