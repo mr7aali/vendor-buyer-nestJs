@@ -51,7 +51,7 @@ export class PermissionGuard implements CanActivate {
     const hasAllPermissions = requiredPermissions.every((permission) =>
       adminPermissions.includes(permission),
     );
-
+    console.log(adminPermissions, requiredPermissions, hasAllPermissions);
     if (!hasAllPermissions) {
       const missingPermissions = requiredPermissions.filter(
         (permission) => !adminPermissions.includes(permission),

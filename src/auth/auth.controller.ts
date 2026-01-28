@@ -123,7 +123,6 @@ export class AuthController {
   @Post("admin/login")
   @HttpCode(HttpStatus.OK)
   async adminLogin(@Body() dto: AdminLoginDto) {
-    console.log(dto);
     return this.authService.adminLogin(dto);
   }
 

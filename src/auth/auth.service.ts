@@ -327,10 +327,13 @@ export class AuthService {
     };
 
     const accessToken = this.jwtService.sign(payload, {
-      secret: this.configService.get("JWT_ADMIN_SECRET"),
+      secret: this.configService.get("JWT_ADMIN_ACCESS_SECRET"),
       expiresIn: "1d",
     });
-
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.get("JWT_ADMIN_REFRESH_SECRET"),
+      expiresIn: "1d",
+    });
     return {
       accessToken,
       admin: {
@@ -602,94 +605,176 @@ export class AuthService {
         description: "Access to main dashboard",
       },
 
-      // Users Management
+      // Analytics
       {
-        key: "users.view",
-        name: "View Users",
-        description: "View users page and user list",
-      },
-      {
-        key: "users.create",
-        name: "Create Users",
-        description: "Create new users",
-      },
-      {
-        key: "users.edit",
-        name: "Edit Users",
-        description: "Edit existing users",
-      },
-      {
-        key: "users.delete",
-        name: "Delete Users",
-        description: "Delete users",
+        key: "analytics.view",
+        name: "View Analytics",
+        description: "View analytics, charts, and insights",
       },
 
-      // Products Management
+      // Buyers Management
       {
-        key: "products.view",
-        name: "View Products",
-        description: "View products page and product list",
+        key: "buyers.view",
+        name: "View Buyers",
+        description: "View buyer list and buyer details",
       },
       {
-        key: "products.create",
-        name: "Create Products",
-        description: "Create new products",
+        key: "buyers.create",
+        name: "Create Buyer",
+        description: "Create new buyer accounts",
       },
       {
-        key: "products.edit",
-        name: "Edit Products",
-        description: "Edit existing products",
+        key: "buyers.edit",
+        name: "Edit Buyer",
+        description: "Edit existing buyer information",
       },
       {
-        key: "products.delete",
-        name: "Delete Products",
-        description: "Delete products",
+        key: "buyers.delete",
+        name: "Delete Buyer",
+        description: "Delete buyer accounts",
+      },
+
+      // Vendors Management
+      {
+        key: "vendors.view",
+        name: "View Vendors",
+        description: "View vendor list and vendor details",
+      },
+      {
+        key: "vendors.create",
+        name: "Create Vendor",
+        description: "Create new vendor accounts",
+      },
+      {
+        key: "vendors.edit",
+        name: "Edit Vendor",
+        description: "Edit vendor information",
+      },
+      {
+        key: "vendors.delete",
+        name: "Delete Vendor",
+        description: "Delete vendor accounts",
       },
 
       // Orders Management
       {
         key: "orders.view",
         name: "View Orders",
-        description: "View orders page and order list",
+        description: "View orders list and order details",
       },
       {
         key: "orders.edit",
         name: "Edit Orders",
-        description: "Edit order status and details",
+        description: "Update order status and details",
+      },
+      {
+        key: "orders.cancel",
+        name: "Cancel Orders",
+        description: "Cancel or reject orders",
       },
 
-      // Reports
+      // Transactions
       {
-        key: "reports.view",
-        name: "View Reports",
-        description: "Access to reports and analytics",
+        key: "transactions.view",
+        name: "View Transactions",
+        description: "View payment and transaction history",
+      },
+      {
+        key: "transactions.refund",
+        name: "Refund Transactions",
+        description: "Initiate refunds for transactions",
       },
 
-      // Admin Management (Super Admin only)
+      // Verification (KYC / Approval)
       {
-        key: "admin.view",
-        name: "View Admins",
-        description: "View admin/employee list",
+        key: "verification.view",
+        name: "View Verifications",
+        description: "View verification requests",
       },
       {
-        key: "admin.create",
-        name: "Create Admin",
-        description: "Create new admin/employee",
+        key: "verification.approve",
+        name: "Approve Verification",
+        description: "Approve buyer/vendor verification",
       },
       {
-        key: "admin.delete",
-        name: "Delete Admin",
-        description: "Delete admin/employee",
+        key: "verification.reject",
+        name: "Reject Verification",
+        description: "Reject buyer/vendor verification",
+      },
+
+      // Permissions & Roles
+      {
+        key: "permissions.view",
+        name: "View Permissions",
+        description: "View roles and permission list",
       },
       {
-        key: "admin.permission.assign",
+        key: "permissions.assign",
         name: "Assign Permissions",
-        description: "Assign permissions to employees",
+        description: "Assign permissions to users or roles",
       },
       {
-        key: "admin.permission.seed",
-        name: "Seed Permissions",
-        description: "Seed initial permissions (development)",
+        key: "permissions.manage",
+        name: "Manage Permissions",
+        description: "Create, update, or delete permissions",
+      },
+
+      // Settings
+      {
+        key: "settings.view",
+        name: "View Settings",
+        description: "View system and application settings",
+      },
+      {
+        key: "settings.update",
+        name: "Update Settings",
+        description: "Update system and application settings",
+      },
+
+      // Chats / Messaging
+      {
+        key: "chats.view",
+        name: "View Chats",
+        description: "View user chats and conversations",
+      },
+      {
+        key: "chats.send",
+        name: "Send Messages",
+        description: "Send messages to users",
+      },
+      {
+        key: "chats.moderate",
+        name: "Moderate Chats",
+        description: "Monitor or moderate chat messages",
+      },
+
+      // Notifications
+      {
+        key: "notifications.view",
+        name: "View Notifications",
+        description: "View system and user notifications",
+      },
+      {
+        key: "notifications.send",
+        name: "Send Notifications",
+        description: "Send notifications to users",
+      },
+
+      // Account (Admin / Employee Account)
+      {
+        key: "account.view",
+        name: "View Account",
+        description: "View own account details",
+      },
+      {
+        key: "account.update",
+        name: "Update Account",
+        description: "Update own account information",
+      },
+      {
+        key: "account.password.change",
+        name: "Change Password",
+        description: "Change account password",
       },
     ];
 
