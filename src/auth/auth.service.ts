@@ -1180,6 +1180,8 @@ export class AuthService {
     const skip = (page - 1) * limit;
     const take = limit;
 
+    // ... (keep the where clause building same as before)
+
     const where: any = {};
 
     if (userType) {
@@ -1219,14 +1221,7 @@ export class AuthService {
       };
     }
 
-    // Build select clause
-    const select: any = {
-      id: true,
-      email: true,
-      index: true,
-      createdAt: true,
-      updatedAt: true,
-      userType: true,
+    const include: any = {
       buyer: {
         select: {
           id: true,
@@ -1235,11 +1230,26 @@ export class AuthService {
           phone: true,
           nidNumber: true,
           // nidFontPhotoUrl: true,
-          // nidBackPhotoUrl: false, // Excluded
-          // profilePhotoUrl: true,
+          profilePhotoUrl: true,
           createdAt: true,
           updatedAt: true,
           gender: true,
+          orders: {
+            select: {
+              id: true,
+              totalAmount: true,
+              status: true,
+              createdAt: true,
+            },
+          },
+          _count: {
+            select: {
+              orders: true,
+              messages: true,
+              couponAssignments: true,
+              connections: true,
+            },
+          },
         },
       },
       vendor: {
@@ -1257,44 +1267,60 @@ export class AuthService {
           businessDescription: true,
           logoUrl: true,
           nationalIdNumber: true,
-          // nidFontPhotoUrl: true,
-          // nidBackPhotoUrl: false, // Excluded
-          // bussinessIdPhotoUrl: true,
-
+          nidFontPhotoUrl: false,
           bussinessRegNumber: true,
+          bussinessIdPhotoUrl: true,
           isActive: true,
           createdAt: true,
           updatedAt: true,
+          orders: {
+            select: {
+              id: true,
+              totalAmount: true,
+              status: true,
+              createdAt: true,
+            },
+          },
+          _count: {
+            select: {
+              orders: true,
+              products: true,
+              categories: true,
+              coupons: true,
+              messages: true,
+              connections: true,
+            },
+          },
         },
       },
     };
 
     if (includeMessages) {
-      select.receivedMessages = {
+      include.receivedMessages = {
         take: 10,
         orderBy: { createdAt: "desc" },
       };
-      select.sentMessages = {
+      include.sentMessages = {
         take: 10,
         orderBy: { createdAt: "desc" },
       };
     }
 
     if (includeNotifications) {
-      select.notifications = {
+      include.notifications = {
         take: 10,
         orderBy: { createdAt: "desc" },
       };
     }
 
     if (includeCount) {
-      select._count = true;
+      include._count = true;
     }
 
-    const [users, total] = await Promise.all([
+    const [rawUsers, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
-        select,
+        include,
         skip,
         take,
         orderBy: {
@@ -1304,12 +1330,76 @@ export class AuthService {
       this.prisma.user.count({ where }),
     ]);
 
+    // Transform users to include order statistics
+    const usersWithStats = rawUsers.map((user) => {
+      // Create base user object
+      const { buyer, vendor, ...baseUser } = user;
+
+      const result: any = { ...baseUser };
+
+      // Handle buyer stats
+      if (buyer) {
+        const buyerOrders = (buyer as any).orders || [];
+        const totalOrderCount = buyerOrders.length;
+        const totalOrderAmount = buyerOrders.reduce(
+          (sum: number, order: any) => sum + (Number(order.totalAmount) || 0),
+          0,
+        );
+        const ordersByStatus = buyerOrders.reduce((acc: any, order: any) => {
+          const status = order.status || "unknown";
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {});
+
+        const { orders, ...buyerWithoutOrders } = buyer as any;
+        result.buyer = {
+          ...buyerWithoutOrders,
+          orderStats: {
+            totalCount: totalOrderCount,
+            totalAmount: totalOrderAmount,
+            byStatus: ordersByStatus,
+          },
+        };
+      } else {
+        result.buyer = null;
+      }
+
+      // Handle vendor stats
+      if (vendor) {
+        const vendorOrders = (vendor as any).orders || [];
+        const totalOrderCount = vendorOrders.length;
+        const totalOrderAmount = vendorOrders.reduce(
+          (sum: number, order: any) => sum + (Number(order.totalAmount) || 0),
+          0,
+        );
+        const ordersByStatus = vendorOrders.reduce((acc: any, order: any) => {
+          const status = order.status || "unknown";
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {});
+
+        const { orders, ...vendorWithoutOrders } = vendor as any;
+        result.vendor = {
+          ...vendorWithoutOrders,
+          orderStats: {
+            totalCount: totalOrderCount,
+            totalAmount: totalOrderAmount,
+            byStatus: ordersByStatus,
+          },
+        };
+      } else {
+        result.vendor = null;
+      }
+
+      return result;
+    });
+
     const totalPages = Math.ceil(total / limit);
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
 
     return {
-      data: users,
+      data: usersWithStats,
       meta: {
         total,
         page,
