@@ -12,6 +12,7 @@ import {
   ParseIntPipe,
   Delete,
   Patch,
+  Query,
 } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
@@ -36,6 +37,7 @@ import {
   UpdateEmployeePermissionsDto,
 } from "./dto/Employee.dto";
 import type { UpdateProfileDto } from "./dto/update.dto";
+import { GetAllUsersQueryDto } from "./dto/getall.query.dto";
 // import { UpdateProfileDto } from "./dto/update.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 // import { UpdateEmployeePermissionsDto } from "./dto/update-employee-permissions.dto";
@@ -327,10 +329,11 @@ export class AuthController {
   async getAllBuyer() {
     return this.authService.getAllBuyer();
   }
+  // Controller
   @UseGuards(AdminAuthGuard)
   @Get("user")
-  async getAlluser() {
-    return this.authService.getAlluser();
+  async getAlluser(@Query() query: GetAllUsersQueryDto) {
+    return this.authService.getAlluser(query);
   }
   @Get("admin")
   async getAllAdminUser() {

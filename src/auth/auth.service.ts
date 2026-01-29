@@ -27,6 +27,7 @@ import { AdminLoginDto } from "./dto/admin-login.dto";
 import { CreateSuperAdminDto } from "./dto/create-super-admin.dto";
 import { CreateEmployeeDto } from "./dto/Employee.dto";
 import { UpdateProfileDto } from "./dto/update.dto";
+import { GetAllUsersQueryDto } from "./dto/getall.query.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 
 @Injectable()
@@ -1159,17 +1160,255 @@ export class AuthService {
     return await this.prisma.buyer.findMany({});
   }
 
-  async getAlluser() {
-    return await this.prisma.user.findMany({
-      include: {
-        vendor: true,
-        buyer: true,
-        notifications: true,
-        _count: true,
-        receivedMessages: true,
-        sentMessages: true,
+  // Service
+  async getAlluser(query: GetAllUsersQueryDto) {
+    const {
+      page = 1,
+      limit = 10,
+      userType,
+      search,
+      gender,
+      isActive,
+      vendorCode,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      includeMessages = false,
+      includeNotifications = false,
+      includeCount = true,
+    } = query;
+
+    const skip = (page - 1) * limit;
+    const take = limit;
+
+    // ... (keep the where clause building same as before)
+
+    const where: any = {};
+
+    if (userType) {
+      where.userType = userType;
+    }
+
+    if (search) {
+      where.OR = [
+        { email: { contains: search, mode: "insensitive" } },
+        {
+          buyer: {
+            fulllName: { contains: search, mode: "insensitive" },
+          },
+        },
+        {
+          vendor: {
+            fulllName: { contains: search, mode: "insensitive" },
+          },
+        },
+      ];
+    }
+
+    if (vendorCode) {
+      where.vendor = {
+        vendorCode: { contains: vendorCode, mode: "insensitive" },
+      };
+    }
+
+    if (gender) {
+      where.OR = [{ buyer: { gender } }, { vendor: { gender } }];
+    }
+
+    if (isActive !== undefined) {
+      where.vendor = {
+        ...where.vendor,
+        isActive,
+      };
+    }
+
+    const include: any = {
+      buyer: {
+        select: {
+          id: true,
+          userId: true,
+          fulllName: true,
+          phone: true,
+          nidNumber: true,
+          // nidFontPhotoUrl: true,
+          profilePhotoUrl: true,
+          createdAt: true,
+          updatedAt: true,
+          gender: true,
+          orders: {
+            select: {
+              id: true,
+              totalAmount: true,
+              status: true,
+              createdAt: true,
+            },
+          },
+          _count: {
+            select: {
+              orders: true,
+              messages: true,
+              couponAssignments: true,
+              connections: true,
+            },
+          },
+        },
       },
+      vendor: {
+        select: {
+          id: true,
+          userId: true,
+          vendorCode: true,
+          fulllName: true,
+          phone: true,
+          address: true,
+          storename: true,
+          storeDescription: true,
+          gender: true,
+          businessName: true,
+          businessDescription: true,
+          logoUrl: true,
+          nationalIdNumber: true,
+          nidFontPhotoUrl: false,
+          bussinessRegNumber: true,
+          bussinessIdPhotoUrl: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          orders: {
+            select: {
+              id: true,
+              totalAmount: true,
+              status: true,
+              createdAt: true,
+            },
+          },
+          _count: {
+            select: {
+              orders: true,
+              products: true,
+              categories: true,
+              coupons: true,
+              messages: true,
+              connections: true,
+            },
+          },
+        },
+      },
+    };
+
+    if (includeMessages) {
+      include.receivedMessages = {
+        take: 10,
+        orderBy: { createdAt: "desc" },
+      };
+      include.sentMessages = {
+        take: 10,
+        orderBy: { createdAt: "desc" },
+      };
+    }
+
+    if (includeNotifications) {
+      include.notifications = {
+        take: 10,
+        orderBy: { createdAt: "desc" },
+      };
+    }
+
+    if (includeCount) {
+      include._count = true;
+    }
+
+    const [rawUsers, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        include,
+        skip,
+        take,
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    // Transform users to include order statistics
+    const usersWithStats = rawUsers.map((user) => {
+      // Create base user object
+      const { buyer, vendor, ...baseUser } = user;
+
+      const result: any = { ...baseUser };
+
+      // Handle buyer stats
+      if (buyer) {
+        const buyerOrders = (buyer as any).orders || [];
+        const totalOrderCount = buyerOrders.length;
+        const totalOrderAmount = buyerOrders.reduce(
+          (sum: number, order: any) => sum + (Number(order.totalAmount) || 0),
+          0,
+        );
+        const ordersByStatus = buyerOrders.reduce((acc: any, order: any) => {
+          const status = order.status || "unknown";
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {});
+
+        const { orders, ...buyerWithoutOrders } = buyer as any;
+        result.buyer = {
+          ...buyerWithoutOrders,
+          orderStats: {
+            totalCount: totalOrderCount,
+            totalAmount: totalOrderAmount,
+            byStatus: ordersByStatus,
+          },
+        };
+      } else {
+        result.buyer = null;
+      }
+
+      // Handle vendor stats
+      if (vendor) {
+        const vendorOrders = (vendor as any).orders || [];
+        const totalOrderCount = vendorOrders.length;
+        const totalOrderAmount = vendorOrders.reduce(
+          (sum: number, order: any) => sum + (Number(order.totalAmount) || 0),
+          0,
+        );
+        const ordersByStatus = vendorOrders.reduce((acc: any, order: any) => {
+          const status = order.status || "unknown";
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {});
+
+        const { orders, ...vendorWithoutOrders } = vendor as any;
+        result.vendor = {
+          ...vendorWithoutOrders,
+          orderStats: {
+            totalCount: totalOrderCount,
+            totalAmount: totalOrderAmount,
+            byStatus: ordersByStatus,
+          },
+        };
+      } else {
+        result.vendor = null;
+      }
+
+      return result;
     });
+
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    return {
+      data: usersWithStats,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage,
+        hasPrevPage,
+      },
+    };
   }
 
   async getAllAdminUser() {

@@ -13,4 +13,8 @@ export class UserRegisterDto {
   @MinLength(8)
   @MaxLength(32)
   confirmPassword: string;
+
+  @IsString()
+  @MinLength(2)
+  evanAddress: string;
 }
