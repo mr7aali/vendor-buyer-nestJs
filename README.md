@@ -1,4 +1,4 @@
-# E-commerce Admin Dashboard Backend
+# Vendor Buyer manage app.
 
 A comprehensive NestJS backend application for an e-commerce platform with vendor-buyer connections, product management, shopping cart, orders, Stripe payments, coupons, messaging, and notifications.
 #cloudinary documentation
