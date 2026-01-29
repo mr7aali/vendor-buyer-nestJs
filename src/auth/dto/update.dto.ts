@@ -1,0 +1,107 @@
+// DTOs
+import { IsString, IsOptional, IsEnum, IsEmail } from "class-validator";
+
+export class UpdateUserDto {
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+}
+
+export class UpdateBuyerProfileDto {
+  @IsOptional()
+  @IsString()
+  fulllName?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  nidNumber?: string;
+
+  //   @IsOptional()
+  //   @IsString()
+  //   nidFontPhotoUrl?: string;
+
+  //   @IsOptional()
+  //   @IsString()
+  //   nidBackPhotoUrl?: string;
+
+  //   @IsOptional()
+  //   @IsString()
+  //   profilePhotoUrl?: string;
+
+  @IsOptional()
+  @IsEnum(["male", "female", "other"])
+  gender?: string;
+}
+
+export class UpdateVendorProfileDto {
+  @IsOptional()
+  @IsString()
+  fulllName?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  storename?: string;
+
+  @IsOptional()
+  @IsString()
+  storeDescription?: string;
+
+  @IsOptional()
+  @IsEnum(["male", "female", "other"])
+  gender?: string;
+
+  @IsOptional()
+  @IsString()
+  businessName?: string;
+
+  @IsOptional()
+  @IsString()
+  businessDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  nationalIdNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  nidFontPhotoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  nidBackPhotoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  bussinessRegNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  bussinessIdPhotoUrl?: string;
+}
+
+export class UpdateProfileDto {
+  @IsOptional()
+  user?: UpdateUserDto;
+
+  @IsOptional()
+  buyer?: UpdateBuyerProfileDto;
+
+  @IsOptional()
+  vendor?: UpdateVendorProfileDto;
+}
