@@ -26,6 +26,7 @@ import { ConfigService } from "@nestjs/config";
 import { AdminLoginDto } from "./dto/admin-login.dto";
 import { CreateSuperAdminDto } from "./dto/create-super-admin.dto";
 import { CreateEmployeeDto } from "./dto/Employee.dto";
+import { UpdateProfileDto } from "./dto/update.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 
 @Injectable()
@@ -1034,7 +1035,126 @@ export class AuthService {
   async getAllVendor() {
     return await this.prisma.vendor.findMany({});
   }
+  async getProfile({
+    email,
+    id,
+    userType,
+  }: {
+    id: string;
+    email: string;
+    userType: "vendor" | "buyer" | "user";
+  }) {
+    if (userType === "buyer") {
+      return await this.prisma.user.findUnique({
+        where: {
+          id,
+          userType,
+        },
+        include: {
+          buyer: true,
+        },
+      });
+    } else if (userType === "vendor") {
+      return await this.prisma.user.findUnique({
+        where: {
+          id,
+        },
+        include: {
+          vendor: true,
+        },
+      });
+    }
+    return await this.prisma.vendor.findMany({});
+  }
+  // Service
+  // Service - Fixed updateProfile method
+  async updateProfile(
+    {
+      email,
+      id,
+      userType,
+    }: {
+      id: string;
+      email: string;
+      userType: "vendor" | "buyer" | "user";
+    },
+    updateDto: UpdateProfileDto,
+  ) {
+    // Extract user-level updates and profile-specific updates
+    const {
+      user: userUpdate,
+      buyer: buyerUpdate,
+      vendor: vendorUpdate,
+    } = updateDto;
 
+    if (userType === "buyer") {
+      // Find the user with buyer relation
+      const user = await this.prisma.user.findUnique({
+        where: { id },
+        include: { buyer: true },
+      });
+
+      if (!user || !user.buyer) {
+        throw new NotFoundException("Buyer profile not found");
+      }
+
+      // Update user table if there are user-level updates
+      if (userUpdate && Object.keys(userUpdate).length > 0) {
+        await this.prisma.user.update({
+          where: { id },
+          data: userUpdate,
+        });
+      }
+
+      // Update buyer profile if there are buyer-specific updates
+      if (buyerUpdate && Object.keys(buyerUpdate).length > 0) {
+        await this.prisma.buyer.update({
+          where: { id: user.buyer.id },
+          data: buyerUpdate,
+        });
+      }
+
+      // Return updated user with buyer relation
+      return await this.prisma.user.findUnique({
+        where: { id },
+        include: { buyer: true },
+      });
+    } else if (userType === "vendor") {
+      // Find the user with vendor relation
+      const user = await this.prisma.user.findUnique({
+        where: { id },
+        include: { vendor: true },
+      });
+
+      if (!user || !user.vendor) {
+        throw new NotFoundException("Vendor profile not found");
+      }
+
+      // Update user table if there are user-level updates
+      if (userUpdate && Object.keys(userUpdate).length > 0) {
+        await this.prisma.user.update({
+          where: { id },
+          data: userUpdate,
+        });
+      }
+
+      // Update vendor profile if there are vendor-specific updates
+      if (vendorUpdate && Object.keys(vendorUpdate).length > 0) {
+        await this.prisma.vendor.update({
+          where: { id: user.vendor.id },
+          data: vendorUpdate,
+        });
+      }
+
+      // Return updated user with vendor relation
+      return await this.prisma.user.findUnique({
+        where: { id },
+        include: { vendor: true },
+      });
+    }
+
+    throw new BadRequestException("Invalid user type");
+  }
   async getAllBuyer() {
     return await this.prisma.buyer.findMany({});
   }

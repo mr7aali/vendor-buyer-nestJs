@@ -35,6 +35,8 @@ import {
   CreateEmployeeDto,
   UpdateEmployeePermissionsDto,
 } from "./dto/Employee.dto";
+import type { UpdateProfileDto } from "./dto/update.dto";
+// import { UpdateProfileDto } from "./dto/update.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 // import { UpdateEmployeePermissionsDto } from "./dto/update-employee-permissions.dto";
 
@@ -291,20 +293,41 @@ export class AuthController {
 
   @Get("me")
   @UseGuards(JwtAuthGuard)
-  async getProfile(@GetUser() user: any) {
-    return user;
+  async getProfile(
+    @GetUser()
+    user: {
+      id: string;
+      email: string;
+      userType: "vendor" | "buyer" | "user";
+    },
+  ) {
+    return this.authService.getProfile(user);
+  }
+  // Controller
+  @Patch("me")
+  @UseGuards(JwtAuthGuard)
+  async updateProfile(
+    @GetUser()
+    user: {
+      id: string;
+      email: string;
+      userType: "vendor" | "buyer" | "user";
+    },
+    @Body() updateDto: UpdateProfileDto,
+  ) {
+    return this.authService.updateProfile(user, updateDto);
   }
 
   @Get("all-vendor")
   async getAllVendor() {
     return this.authService.getAllVendor();
   }
-
+  @UseGuards(AdminAuthGuard)
   @Get("all-buyer")
   async getAllBuyer() {
     return this.authService.getAllBuyer();
   }
-
+  @UseGuards(AdminAuthGuard)
   @Get("user")
   async getAlluser() {
     return this.authService.getAlluser();
