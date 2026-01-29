@@ -27,6 +27,7 @@ import { AdminLoginDto } from "./dto/admin-login.dto";
 import { CreateSuperAdminDto } from "./dto/create-super-admin.dto";
 import { CreateEmployeeDto } from "./dto/Employee.dto";
 import { UpdateProfileDto } from "./dto/update.dto";
+import { GetAllUsersQueryDto } from "./dto/getall.query.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 
 @Injectable()
@@ -1159,17 +1160,165 @@ export class AuthService {
     return await this.prisma.buyer.findMany({});
   }
 
-  async getAlluser() {
-    return await this.prisma.user.findMany({
-      include: {
-        vendor: true,
-        buyer: true,
-        notifications: true,
-        _count: true,
-        receivedMessages: true,
-        sentMessages: true,
+  // Service
+  async getAlluser(query: GetAllUsersQueryDto) {
+    const {
+      page = 1,
+      limit = 10,
+      userType,
+      search,
+      gender,
+      isActive,
+      vendorCode,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      includeMessages = false,
+      includeNotifications = false,
+      includeCount = true,
+    } = query;
+
+    const skip = (page - 1) * limit;
+    const take = limit;
+
+    const where: any = {};
+
+    if (userType) {
+      where.userType = userType;
+    }
+
+    if (search) {
+      where.OR = [
+        { email: { contains: search, mode: "insensitive" } },
+        {
+          buyer: {
+            fulllName: { contains: search, mode: "insensitive" },
+          },
+        },
+        {
+          vendor: {
+            fulllName: { contains: search, mode: "insensitive" },
+          },
+        },
+      ];
+    }
+
+    if (vendorCode) {
+      where.vendor = {
+        vendorCode: { contains: vendorCode, mode: "insensitive" },
+      };
+    }
+
+    if (gender) {
+      where.OR = [{ buyer: { gender } }, { vendor: { gender } }];
+    }
+
+    if (isActive !== undefined) {
+      where.vendor = {
+        ...where.vendor,
+        isActive,
+      };
+    }
+
+    // Build select clause
+    const select: any = {
+      id: true,
+      email: true,
+      index: true,
+      createdAt: true,
+      updatedAt: true,
+      userType: true,
+      buyer: {
+        select: {
+          id: true,
+          userId: true,
+          fulllName: true,
+          phone: true,
+          nidNumber: true,
+          // nidFontPhotoUrl: true,
+          // nidBackPhotoUrl: false, // Excluded
+          // profilePhotoUrl: true,
+          createdAt: true,
+          updatedAt: true,
+          gender: true,
+        },
       },
-    });
+      vendor: {
+        select: {
+          id: true,
+          userId: true,
+          vendorCode: true,
+          fulllName: true,
+          phone: true,
+          address: true,
+          storename: true,
+          storeDescription: true,
+          gender: true,
+          businessName: true,
+          businessDescription: true,
+          logoUrl: true,
+          nationalIdNumber: true,
+          // nidFontPhotoUrl: true,
+          // nidBackPhotoUrl: false, // Excluded
+          // bussinessIdPhotoUrl: true,
+
+          bussinessRegNumber: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+    };
+
+    if (includeMessages) {
+      select.receivedMessages = {
+        take: 10,
+        orderBy: { createdAt: "desc" },
+      };
+      select.sentMessages = {
+        take: 10,
+        orderBy: { createdAt: "desc" },
+      };
+    }
+
+    if (includeNotifications) {
+      select.notifications = {
+        take: 10,
+        orderBy: { createdAt: "desc" },
+      };
+    }
+
+    if (includeCount) {
+      select._count = true;
+    }
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        select,
+        skip,
+        take,
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    return {
+      data: users,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage,
+        hasPrevPage,
+      },
+    };
   }
 
   async getAllAdminUser() {
