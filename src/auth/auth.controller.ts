@@ -38,6 +38,7 @@ import {
 } from "./dto/Employee.dto";
 import type { UpdateProfileDto } from "./dto/update.dto";
 import { GetAllUsersQueryDto } from "./dto/getall.query.dto";
+import { GetAllVendorsQueryDto } from "./dto/getAllVendors";
 // import { UpdateProfileDto } from "./dto/update.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 // import { UpdateEmployeePermissionsDto } from "./dto/update-employee-permissions.dto";
@@ -320,10 +321,10 @@ export class AuthController {
     return this.authService.updateProfile(user, updateDto);
   }
 
-  @Get("all-vendor")
-  async getAllVendor() {
-    return this.authService.getAllVendor();
-  }
+  // @Get("all-vendor")
+  // async getAllVendor() {
+  //   return this.authService.getAllVendor();
+  // }
   @UseGuards(AdminAuthGuard)
   @Get("all-buyer")
   async getAllBuyer() {
@@ -338,5 +339,10 @@ export class AuthController {
   @Get("admin")
   async getAllAdminUser() {
     return this.authService.getAllAdminUser();
+  }
+  @UseGuards(AdminAuthGuard)
+  @Get("all-vendor")
+  async getAllVendors(@Query() query: GetAllVendorsQueryDto) {
+    return this.authService.getAllVendors(query);
   }
 }

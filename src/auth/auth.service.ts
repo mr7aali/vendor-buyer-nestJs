@@ -28,6 +28,8 @@ import { CreateSuperAdminDto } from "./dto/create-super-admin.dto";
 import { CreateEmployeeDto } from "./dto/Employee.dto";
 import { UpdateProfileDto } from "./dto/update.dto";
 import { GetAllUsersQueryDto } from "./dto/getall.query.dto";
+import { GetAllVendorsQueryDto, VendorSortBy } from "./dto/getAllVendors";
+import { OrderStatus } from "src/orders/dto/update-order-status.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 
 @Injectable()
@@ -1365,6 +1367,7 @@ export class AuthService {
       }
 
       // Handle vendor stats
+      // Handle vendor stats
       if (vendor) {
         const vendorOrders = (vendor as any).orders || [];
         const totalOrderCount = vendorOrders.length;
@@ -1378,6 +1381,15 @@ export class AuthService {
           return acc;
         }, {});
 
+        // Calculate revenue from delivered orders only
+        const deliveredOrders = vendorOrders.filter(
+          (order: any) => order.status === ordersByStatus.DELIVERED,
+        );
+        const revenue = deliveredOrders.reduce(
+          (sum: number, order: any) => sum + (Number(order.totalAmount) || 0),
+          0,
+        );
+
         const { orders, ...vendorWithoutOrders } = vendor as any;
         result.vendor = {
           ...vendorWithoutOrders,
@@ -1386,6 +1398,7 @@ export class AuthService {
             totalAmount: totalOrderAmount,
             byStatus: ordersByStatus,
           },
+          revenue: revenue, // Revenue from delivered orders only
         };
       } else {
         result.vendor = null;
@@ -1413,5 +1426,220 @@ export class AuthService {
 
   async getAllAdminUser() {
     return await this.prisma.admin.findMany({});
+  }
+
+  async getAllVendors(query: GetAllVendorsQueryDto) {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      vendorCode,
+      gender,
+      isActive,
+      sortBy = VendorSortBy.CREATED_AT,
+      sortOrder = "desc",
+      minRevenue,
+      maxRevenue,
+      minRating,
+      maxRating,
+      businessName,
+    } = query;
+
+    const skip = (page - 1) * limit;
+    const take = limit;
+
+    // Build where clause
+    const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { fulllName: { contains: search, mode: "insensitive" } },
+        { storename: { contains: search, mode: "insensitive" } },
+        { businessName: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
+        { address: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (vendorCode) {
+      where.vendorCode = { contains: vendorCode, mode: "insensitive" };
+    }
+
+    if (gender) {
+      where.gender = gender;
+    }
+
+    if (isActive !== undefined) {
+      where.isActive = isActive;
+    }
+
+    if (businessName) {
+      where.businessName = { contains: businessName, mode: "insensitive" };
+    }
+
+    // Fetch vendors with all required data
+    const [rawVendors, total] = await Promise.all([
+      this.prisma.vendor.findMany({
+        where,
+        include: {
+          orders: {
+            select: {
+              id: true,
+              totalAmount: true,
+              status: true,
+              createdAt: true,
+            },
+          },
+          _count: {
+            select: {
+              orders: true,
+              products: true,
+              categories: true,
+              coupons: true,
+              messages: true,
+              connections: true,
+            },
+          },
+        },
+        skip,
+        take: take * 2, // Fetch more for filtering
+      }),
+      this.prisma.vendor.count({ where }),
+    ]);
+
+    // Transform vendors and calculate stats
+    const vendorsWithStats = rawVendors.map((vendor) => {
+      const { orders, ...vendorData } = vendor;
+
+      // Calculate revenue (from delivered orders only)
+      const deliveredOrders = orders.filter(
+        (order) => order.status === OrderStatus.DELIVERED,
+      );
+      const revenue = deliveredOrders.reduce(
+        (sum, order) => sum + Number(order.totalAmount),
+        0,
+      );
+
+      // Calculate total orders
+      const totalOrders = orders.length;
+
+      // Calculate order statistics by status
+      const ordersByStatus = orders.reduce(
+        (acc, order) => {
+          const status = order.status || "unknown";
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      // TODO: Implement rating calculation
+      // This depends on your rating system - could be from reviews, feedback, etc.
+      // For now, using a placeholder. You'll need to add a Review/Rating model
+      const rating = 0; // Placeholder - implement based on your rating system
+
+      return {
+        id: vendorData.id,
+        userId: vendorData.userId,
+        vendorCode: vendorData.vendorCode,
+        fulllName: vendorData.fulllName,
+        phone: vendorData.phone,
+        address: vendorData.address,
+        storename: vendorData.storename,
+        storeDescription: vendorData.storeDescription,
+        gender: vendorData.gender,
+        businessName: vendorData.businessName,
+        businessDescription: vendorData.businessDescription,
+        logoUrl: vendorData.logoUrl,
+        isActive: vendorData.isActive,
+        createdAt: vendorData.createdAt,
+        updatedAt: vendorData.updatedAt,
+        revenue: revenue,
+        rating: rating,
+        totalOrders: totalOrders,
+        orderStats: {
+          totalCount: totalOrders,
+          byStatus: ordersByStatus,
+        },
+        counts: vendorData._count,
+      };
+    });
+
+    // Apply revenue filters
+    let filteredVendors = vendorsWithStats;
+    if (minRevenue !== undefined) {
+      filteredVendors = filteredVendors.filter((v) => v.revenue >= minRevenue);
+    }
+    if (maxRevenue !== undefined) {
+      filteredVendors = filteredVendors.filter((v) => v.revenue <= maxRevenue);
+    }
+
+    // Apply rating filters
+    if (minRating !== undefined) {
+      filteredVendors = filteredVendors.filter((v) => v.rating >= minRating);
+    }
+    if (maxRating !== undefined) {
+      filteredVendors = filteredVendors.filter((v) => v.rating <= maxRating);
+    }
+
+    // Sort vendors
+    filteredVendors.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortBy) {
+        case VendorSortBy.REVENUE:
+          aValue = a.revenue;
+          bValue = b.revenue;
+          break;
+        case VendorSortBy.RATING:
+          aValue = a.rating;
+          bValue = b.rating;
+          break;
+        case VendorSortBy.TOTAL_ORDERS:
+          aValue = a.totalOrders;
+          bValue = b.totalOrders;
+          break;
+        case VendorSortBy.FULL_NAME:
+          aValue = a.fulllName;
+          bValue = b.fulllName;
+          break;
+        case VendorSortBy.STORE_NAME:
+          aValue = a.storename;
+          bValue = b.storename;
+          break;
+        case VendorSortBy.CREATED_AT:
+        default:
+          aValue = a.createdAt;
+          bValue = b.createdAt;
+          break;
+      }
+
+      if (sortOrder === "asc") {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+
+    // Apply pagination to filtered results
+    const paginatedVendors = filteredVendors.slice(0, take);
+    const filteredTotal = filteredVendors.length;
+
+    const totalPages = Math.ceil(filteredTotal / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    return {
+      data: paginatedVendors,
+      meta: {
+        total: filteredTotal,
+        page,
+        limit,
+        totalPages,
+        hasNextPage,
+        hasPrevPage,
+      },
+    };
   }
 }

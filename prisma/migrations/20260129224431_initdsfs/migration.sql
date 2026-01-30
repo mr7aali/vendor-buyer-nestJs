@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Vendor" ALTER COLUMN "vendorCode" SET DEFAULT 'VEN-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 8));
+
+-- AlterTable
+ALTER TABLE "user" ADD COLUMN     "evanAddress" TEXT NOT NULL DEFAULT '';
