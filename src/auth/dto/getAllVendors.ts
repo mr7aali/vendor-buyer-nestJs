@@ -6,7 +6,7 @@ import {
   IsBoolean,
   IsEnum,
 } from "class-validator";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 
 export enum VendorSortBy {
   CREATED_AT = "createdAt",
@@ -43,9 +43,8 @@ export class GetAllVendorsQueryDto {
   gender?: string;
 
   @IsOptional()
-  @Type(() => Boolean)
-  @IsBoolean()
-  isActive?: boolean;
+  @IsString()
+  isActive?: string;
 
   @IsOptional()
   @IsEnum(VendorSortBy)

@@ -87,8 +87,12 @@ export class AuthController {
     });
   }
 
-  // ==================== BUYER REGISTRATION ====================
+  @Get("vendor/:id")
+  async getVendorById(@Param("id") id: string) {
+    return this.authService.getVendorById(id);
+  }
 
+  // ==================== BUYER REGISTRATION ====================
   @Post("register/buyer")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
@@ -343,6 +347,7 @@ export class AuthController {
   @UseGuards(AdminAuthGuard)
   @Get("all-vendor")
   async getAllVendors(@Query() query: GetAllVendorsQueryDto) {
+    console.log(query);
     return this.authService.getAllVendors(query);
   }
 }

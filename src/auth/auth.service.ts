@@ -243,6 +243,446 @@ export class AuthService {
       );
     }
   }
+  async getVendorById(id: string) {
+    // Run all queries in parallel for better performance
+    const [
+      vendor,
+      orderAggregates,
+      productAggregates,
+      stockAggregates,
+      topSellingProducts,
+      timeBasedStats,
+    ] = await Promise.all([
+      // Main vendor query
+      this.prisma.vendor.findUnique({
+        where: { id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+          categories: {
+            select: {
+              id: true,
+              name: true,
+              thumbnail: true,
+              description: true,
+              displayOrder: true,
+              createdAt: true,
+              _count: {
+                select: {
+                  products: true,
+                },
+              },
+            },
+            orderBy: {
+              displayOrder: "asc",
+            },
+          },
+          // coupons: {
+          //   select: {
+          //     id: true,
+          //     code: true,
+          //     discountType: true,
+          //     discountValue: true,
+          //     minPurchaseAmount: true,
+          //     maxDiscountAmount: true,
+          //     validFrom: true,
+          //     validUntil: true,
+          //     usageLimit: true,
+          //     usedCount: true,
+          //     isActive: true,
+          //     createdAt: true,
+          //   },
+          //   orderBy: {
+          //     createdAt: "desc",
+          //   },
+          // },
+          _count: {
+            select: {
+              products: true,
+              categories: true,
+              orders: true,
+              coupons: true,
+              messages: true,
+              connections: true,
+            },
+          },
+        },
+      }),
+
+      // Order aggregates by status
+      await this.prisma.order.groupBy({
+        by: ["status"],
+        where: {
+          vendorId: id,
+        },
+        _sum: {
+          totalAmount: true,
+          subtotal: true,
+          discountAmount: true,
+        },
+        _count: {
+          id: true,
+        },
+      }),
+
+      // Product aggregates
+      await this.prisma.product.groupBy({
+        by: ["isAvailable"],
+        where: {
+          vendorId: id,
+        },
+        _count: {
+          id: true,
+        },
+      }),
+
+      // Stock level aggregates
+      await this.prisma.$queryRaw<
+        Array<{ stock_status: string; count: number }>
+      >`
+      SELECT 
+        CASE 
+          WHEN "stockQuantity" = 0 THEN 'out_of_stock'
+          WHEN "stockQuantity" > 0 AND "stockQuantity" < 10 THEN 'low_stock'
+          ELSE 'in_stock'
+        END as stock_status,
+        COUNT(*)::int as count
+      FROM "Product"
+      WHERE "vendorId" = ${id}
+      GROUP BY stock_status
+    `,
+
+      // Top selling products using aggregate
+      await this.prisma.orderItem.groupBy({
+        by: ["productId"],
+        where: {
+          order: {
+            vendorId: id,
+          },
+        },
+        _sum: {
+          quantity: true,
+          totalPrice: true,
+        },
+        orderBy: {
+          _sum: {
+            quantity: "desc",
+          },
+        },
+        take: 10,
+      }),
+
+      // Time-based statistics in single query
+      await this.prisma.$queryRaw<
+        Array<{
+          total_revenue: number;
+          total_orders: number;
+          delivered_revenue: number;
+          delivered_orders: number;
+          recent_revenue: number;
+          recent_orders: number;
+          monthly_revenue: number;
+          monthly_orders: number;
+          cancelled_orders: number;
+        }>
+      >`
+      SELECT 
+        COALESCE(SUM("totalAmount"), 0)::decimal as total_revenue,
+        COUNT(*)::int as total_orders,
+        COALESCE(SUM(CASE WHEN status = ${OrderStatus.DELIVERED} THEN "totalAmount" ELSE 0 END), 0)::decimal as delivered_revenue,
+        COUNT(CASE WHEN status = ${OrderStatus.DELIVERED} THEN 1 END)::int as delivered_orders,
+        COALESCE(SUM(CASE WHEN "createdAt" >= NOW() - INTERVAL '7 days' THEN "totalAmount" ELSE 0 END), 0)::decimal as recent_revenue,
+        COUNT(CASE WHEN "createdAt" >= NOW() - INTERVAL '7 days' THEN 1 END)::int as recent_orders,
+        COALESCE(SUM(CASE WHEN "createdAt" >= NOW() - INTERVAL '30 days' THEN "totalAmount" ELSE 0 END), 0)::decimal as monthly_revenue,
+        COUNT(CASE WHEN "createdAt" >= NOW() - INTERVAL '30 days' THEN 1 END)::int as monthly_orders,
+        COUNT(CASE WHEN status = ${OrderStatus.CANCELLED} THEN 1 END)::int as cancelled_orders
+      FROM "Order"
+      WHERE "vendorId" = ${id}
+    `,
+    ]);
+
+    if (!vendor) {
+      throw new NotFoundException(`Vendor with ID ${id} not found`);
+    }
+
+    // Process order aggregates
+    let totalRevenue = 0;
+    let deliveredRevenue = 0;
+    const ordersByStatus: Record<string, number> = {};
+    let totalOrders = 0;
+
+    orderAggregates.forEach((agg) => {
+      const status = agg.status;
+      const revenue = Number(agg._sum.totalAmount || 0);
+      const count = agg._count.id;
+
+      ordersByStatus[status] = count;
+      totalRevenue += revenue;
+      totalOrders += count;
+
+      if (status === OrderStatus.DELIVERED) {
+        deliveredRevenue = revenue;
+      }
+    });
+
+    // Process product aggregates
+    let totalProducts = 0;
+    let availableProducts = 0;
+
+    productAggregates.forEach((agg) => {
+      const count = agg._count.id;
+      totalProducts += count;
+      if (agg.isAvailable) {
+        availableProducts = count;
+      }
+    });
+
+    // Process stock aggregates
+    let outOfStock = 0;
+    let lowStock = 0;
+
+    stockAggregates.forEach((agg) => {
+      if (agg.stock_status === "out_of_stock") {
+        outOfStock = Number(agg.count);
+      } else if (agg.stock_status === "low_stock") {
+        lowStock = Number(agg.count);
+      }
+    });
+
+    // Get time-based stats from raw query
+    const stats = timeBasedStats[0] || {
+      total_revenue: 0,
+      total_orders: 0,
+      delivered_revenue: 0,
+      delivered_orders: 0,
+      recent_revenue: 0,
+      recent_orders: 0,
+      monthly_revenue: 0,
+      monthly_orders: 0,
+      cancelled_orders: 0,
+    };
+
+    const totalOrdersFromStats = Number(stats.total_orders);
+    const cancelledOrders = Number(stats.cancelled_orders);
+    const returnRate =
+      totalOrdersFromStats > 0
+        ? (cancelledOrders / totalOrdersFromStats) * 100
+        : 0;
+
+    const avgOrderValue =
+      totalOrdersFromStats > 0
+        ? Number(stats.total_revenue) / totalOrdersFromStats
+        : 0;
+
+    // Get product details for top selling products
+    const topProductIds = topSellingProducts.map((tp) => tp.productId);
+    // const topProductDetails =
+    //   topProductIds.length > 0
+    //     ? await this.prisma.product.findMany({
+    //         where: {
+    //           id: { in: topProductIds },
+    //         },
+    //         select: {
+    //           id: true,
+    //           name: true,
+    //           imageUrl: true,
+    //           price: true,
+    //         },
+    //       })
+    //     : [];
+
+    // const topSellingProductsFormatted = topSellingProducts.map((tp) => {
+    //   const product = topProductDetails.find((p) => p.id === tp.productId);
+    //   return {
+    //     product,
+    //     totalQuantity: tp._sum.quantity || 0,
+    //     totalRevenue: Number(tp._sum.totalPrice || 0),
+    //   };
+    // });
+
+    // Get additional counts using optimized queries
+    const [activeConnectionsCount, unreadMessagesCount, activeCouponsCount] =
+      await Promise.all([
+        this.prisma.vendorBuyerConnection.count({
+          where: {
+            vendorId: id,
+            isActive: true,
+          },
+        }),
+
+        this.prisma.message.count({
+          where: {
+            vendorId: id,
+            isRead: false,
+          },
+        }),
+
+        this.prisma.coupon.count({
+          where: {
+            vendorId: id,
+            isActive: true,
+            validFrom: { lte: new Date() },
+            validUntil: { gte: new Date() },
+          },
+        }),
+      ]);
+
+    // Get recent orders (only last 10 for display)
+    // const recentOrders = await this.prisma.order.findMany({
+    //   where: {
+    //     vendorId: id,
+    //   },
+    //   select: {
+    //     id: true,
+    //     orderNumber: true,
+    //     subtotal: true,
+    //     discountAmount: true,
+    //     totalAmount: true,
+    //     status: true,
+    //     createdAt: true,
+    //     buyer: {
+    //       select: {
+    //         id: true,
+    //         fulllName: true,
+    //         profilePhotoUrl: true,
+    //       },
+    //     },
+    //   },
+    //   orderBy: {
+    //     createdAt: "desc",
+    //   },
+    //   take: 10,
+    // });
+
+    // Get recent products (only last 20 for display)
+    // const products = await this.prisma.product.findMany({
+    //   where: {
+    //     vendorId: id,
+    //   },
+    //   select: {
+    //     id: true,
+    //     name: true,
+    //     description: true,
+    //     price: true,
+    //     stockQuantity: true,
+    //     imageUrl: true,
+    //     images: true,
+    //     isAvailable: true,
+    //     createdAt: true,
+    //     updatedAt: true,
+    //     category: {
+    //       select: {
+    //         id: true,
+    //         name: true,
+    //       },
+    //     },
+    //   },
+    //   orderBy: {
+    //     createdAt: "desc",
+    //   },
+    //   take: 20,
+    // });
+
+    // // Get connections
+    // const connections = await this.prisma.vendorBuyerConnection.findMany({
+    //   where: {
+    //     vendorId: id,
+    //   },
+    //   select: {
+    //     id: true,
+    //     buyerId: true,
+    //     isActive: true,
+    //     connectedAt: true,
+    //     buyer: {
+    //       select: {
+    //         id: true,
+    //         fulllName: true,
+    //         phone: true,
+    //         profilePhotoUrl: true,
+    //       },
+    //     },
+    //   },
+    //   orderBy: {
+    //     connectedAt: "desc",
+    //   },
+    // });
+
+    const rating = 0; // Placeholder - implement Review model for real ratings
+
+    return {
+      // Basic vendor info
+      // id: vendor.id,
+      // userId: vendor.userId,
+      // vendorCode: vendor.vendorCode,
+      // fulllName: vendor.fulllName,
+      // phone: vendor.phone,
+      // address: vendor.address,
+      // storename: vendor.storename,
+      // storeDescription: vendor.storeDescription,
+      // gender: vendor.gender,
+      // businessName: vendor.businessName,
+      // businessDescription: vendor.businessDescription,
+      // logoUrl: vendor.logoUrl,
+      // nationalIdNumber: vendor.nationalIdNumber,
+      // bussinessRegNumber: vendor.bussinessRegNumber,
+      // isActive: vendor.isActive,
+      // createdAt: vendor.createdAt,
+      // updatedAt: vendor.updatedAt,
+      ...vendor,
+      // User account
+      user: vendor.user,
+
+      // Financial statistics
+      financialStats: {
+        revenue: Number(stats.delivered_revenue), // Revenue from delivered orders only
+        totalRevenue: Number(stats.total_revenue), // All orders
+        monthlyRevenue: Number(stats.monthly_revenue), // Last 30 days
+        recentRevenue: Number(stats.recent_revenue), // Last 7 days
+        avgOrderValue: Number(avgOrderValue.toFixed(2)),
+      },
+
+      // Order statistics
+      orderStats: {
+        totalOrders: totalOrdersFromStats,
+        byStatus: ordersByStatus,
+        recentOrders: Number(stats.recent_orders),
+        monthlyOrders: Number(stats.monthly_orders),
+        cancelledOrders: cancelledOrders,
+      },
+
+      // Product statistics
+      productStats: {
+        total: totalProducts,
+        available: availableProducts,
+        outOfStock: outOfStock,
+        lowStock: lowStock,
+      },
+
+      // Metrics
+      rating: rating,
+      returnRate: Number(returnRate.toFixed(2)), // Percentage
+      activeConnections: activeConnectionsCount,
+      unreadMessages: unreadMessagesCount,
+      activeCoupons: activeCouponsCount,
+
+      // Detailed data
+      // categories: vendor.categories,
+      // products: products,
+      // recentOrders: recentOrders,
+      // topSellingProducts: topSellingProductsFormatted,
+      // coupons: vendor.coupons,
+      // connections: connections,
+
+      // Counts
+      counts: vendor._count,
+    };
+  }
 
   async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findUnique({
@@ -1444,7 +1884,7 @@ export class AuthService {
       maxRating,
       businessName,
     } = query;
-
+    console.log(isActive, "isActive ===========> isActive");
     const skip = (page - 1) * limit;
     const take = limit;
 
@@ -1470,7 +1910,11 @@ export class AuthService {
     }
 
     if (isActive !== undefined) {
-      where.isActive = isActive;
+      if (isActive === "true") {
+        where.isActive = true;
+      } else {
+        where.isActive = false;
+      }
     }
 
     if (businessName) {
@@ -1631,7 +2075,7 @@ export class AuthService {
     const hasPrevPage = page > 1;
 
     return {
-      data: paginatedVendors,
+      items: paginatedVendors,
       meta: {
         total: filteredTotal,
         page,
