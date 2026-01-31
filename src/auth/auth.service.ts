@@ -30,6 +30,7 @@ import { UpdateProfileDto } from "./dto/update.dto";
 import { GetAllUsersQueryDto } from "./dto/getall.query.dto";
 import { GetAllVendorsQueryDto, VendorSortBy } from "./dto/getAllVendors";
 import { OrderStatus } from "src/orders/dto/update-order-status.dto";
+import { UpdateVendorDto } from "./dto/update-vendor.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 
 @Injectable()
@@ -263,6 +264,7 @@ export class AuthService {
               email: true,
               createdAt: true,
               updatedAt: true,
+              evanAddress: true,
             },
           },
           categories: {
@@ -683,7 +685,38 @@ export class AuthService {
       counts: vendor._count,
     };
   }
+  async updateVendor(id: string, updateDto: UpdateVendorDto) {
+    // Check if vendor exists
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { id },
+    });
 
+    if (!vendor) {
+      throw new NotFoundException(`Vendor with ID ${id} not found`);
+    }
+
+    // Update vendor
+    const updatedVendor = await this.prisma.vendor.update({
+      where: { id },
+      data: updateDto,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      message: "Vendor updated successfully",
+      vendor: updatedVendor,
+    };
+  }
   async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: loginDto.email },

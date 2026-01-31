@@ -61,24 +61,27 @@ model Buyer {
 }
 
 model Vendor {
-  id                  String  @id @default(uuid())
-  userId              String  @unique
-  vendorCode          String  @unique @default(dbgenerated("'VEN-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 8))"))
-  fulllName           String
-  phone               String
+  id                    String  @id @default(uuid())
+  userId                String  @unique
+  vendorCode            String  @unique @default(dbgenerated("'VEN-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 8))"))
+  fulllName             String
+  phone                 String
   // email               String  @unique
-  address             String
-  storename           String
-  storeDescription    String
-  gender              String
-  businessName        String?
-  businessDescription String?
-  logoUrl             String
-  nationalIdNumber    String
-  nidFontPhotoUrl     String
-  nidBackPhotoUrl     String
-  bussinessRegNumber  String
-  bussinessIdPhotoUrl String
+  address               String
+  storename             String
+  storeDescription      String
+  gender                String
+  businessName          String?
+  businessDescription   String?
+  logoUrl               String
+  nationalIdNumber      String
+  nidFontPhotoUrl       String
+  nidBackPhotoUrl       String
+  isNidVerify           Boolean @default(false)
+  bussinessRegNumber    String
+  bussinessIdPhotoUrl   String
+  isBussinessIdVerified Boolean @default(false)
+  website               String  @default("")
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())

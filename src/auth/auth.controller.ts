@@ -36,9 +36,13 @@ import {
   CreateEmployeeDto,
   UpdateEmployeePermissionsDto,
 } from "./dto/Employee.dto";
-import type { UpdateProfileDto } from "./dto/update.dto";
+import type {
+  UpdateProfileDto,
+  UpdateVendorProfileDto,
+} from "./dto/update.dto";
 import { GetAllUsersQueryDto } from "./dto/getall.query.dto";
 import { GetAllVendorsQueryDto } from "./dto/getAllVendors";
+import { UpdateVendorDto } from "./dto/update-vendor.dto";
 // import { UpdateProfileDto } from "./dto/update.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 // import { UpdateEmployeePermissionsDto } from "./dto/update-employee-permissions.dto";
@@ -86,12 +90,20 @@ export class AuthController {
       files: files,
     });
   }
-
+  // 1px solid red
   @Get("vendor/:id")
+  @UseGuards(AdminAuthGuard)
   async getVendorById(@Param("id") id: string) {
     return this.authService.getVendorById(id);
   }
-
+  @Patch("vendor/:id")
+  @UseGuards(AdminAuthGuard)
+  async updateVendor(
+    @Param("id") id: string,
+    @Body() updateDto: UpdateVendorDto,
+  ) {
+    return this.authService.updateVendor(id, updateDto);
+  }
   // ==================== BUYER REGISTRATION ====================
   @Post("register/buyer")
   @UseGuards(JwtAuthGuard)
