@@ -416,6 +416,40 @@ model VendorReview {
   @@map("vendor_review")
 }
 
+enum ActivityType {
+  ORDER_CREATED
+  ORDER_DELIVERED
+  ORDER_CREATE_FAILED
+  VENDOR_KYC_SUBMITTED
+  USER_REGISTERED
+  PAYMENT_RECEIVED
+}
+
+enum ActorType {
+  USER
+  VENDOR
+  ADMIN
+  SYSTEM
+}
+
+model ActivityLog {
+  id String @id @default(uuid())
+
+  type        ActivityType
+  title       String
+  description String
+
+  entity   String?
+  entityId String?
+
+  actorType ActorType?
+  actorName String?
+
+  meta Json?
+
+  createdAt DateTime @default(now())
+}
+
 // Update existing models to add relations
 // model Product {
 //   // ... existing fields
