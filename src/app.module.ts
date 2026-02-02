@@ -16,6 +16,7 @@ import { AppService } from "./app.service.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { CloudinaryModule } from "./cloudinary/cloudinary.module";
 import { ReviewModule } from "./prisma/review.module.js";
+import { AdminDashboardModule } from "./dashboard/dashboard.module.js";
 // import { MessagesGateway } from "./messages/messages.gateway.js";
 
 @Module({
@@ -37,6 +38,7 @@ import { ReviewModule } from "./prisma/review.module.js";
     NotificationsModule,
     CloudinaryModule,
     ReviewModule,
+    AdminDashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

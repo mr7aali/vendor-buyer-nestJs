@@ -27,6 +27,7 @@ import {
   WeeklyRevenueDataDto,
   WeeklyUserDataDto,
 } from "./dashboard.dto";
+import { DashboardQueryClsDto } from "./dto/dashboard-query.dto";
 
 @ApiTags("Admin Dashboard")
 @ApiBearerAuth()
@@ -34,7 +35,6 @@ import {
 @UseGuards(AdminAuthGuard)
 export class AdminDashboardController {
   constructor(private readonly dashboardService: AdminDashboardService) {}
-
   /**
    * Get complete dashboard overview
    * This is the main endpoint that returns all dashboard data
@@ -45,11 +45,10 @@ export class AdminDashboardController {
   @ApiResponse({
     status: 200,
     description: "Dashboard overview retrieved successfully",
-    type: DashboardOverviewDto,
+    type: DashboardQueryClsDto,
   })
-  async getDashboardOverview(
-    @Query() query: DashboardQueryDto,
-  ): Promise<DashboardOverviewDto> {
+  async getDashboardOverview(@Query() query: DashboardQueryClsDto) {
+    console.log(query, "This is my current query");
     return this.dashboardService.getDashboardOverview(query);
   }
 

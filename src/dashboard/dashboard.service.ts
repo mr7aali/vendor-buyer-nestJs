@@ -13,6 +13,7 @@ import {
   WeeklyUserDataDto,
 } from "./dashboard.dto";
 import { ActivityType } from "generated/prisma/enums";
+import { DashboardQueryClsDto } from "./dto/dashboard-query.dto";
 // import {
 //   DashboardOverviewDto,
 //   DashboardQueryDto,
@@ -34,9 +35,7 @@ export class AdminDashboardService {
   /**
    * Get complete dashboard overview
    */
-  async getDashboardOverview(
-    query: DashboardQueryDto,
-  ): Promise<DashboardOverviewDto> {
+  async getDashboardOverview(query: DashboardQueryClsDto) {
     const [
       kpiMetrics,
       systemHealth,

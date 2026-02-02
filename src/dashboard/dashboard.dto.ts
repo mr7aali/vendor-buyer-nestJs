@@ -98,3 +98,10 @@ export class DashboardQueryDto {
   includeCharts?: boolean = true;
   includeActivity?: boolean = true;
 }
+
+// Query DTOs
+// export class DashboardQueryDto {
+//   days?: number; // Default to last 7 days
+//   includeCharts?: boolean;
+//   includeActivity?: boolean;
+// }
