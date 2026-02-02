@@ -48,7 +48,6 @@ export class AdminDashboardController {
     type: DashboardQueryClsDto,
   })
   async getDashboardOverview(@Query() query: DashboardQueryClsDto) {
-    console.log(query, "This is my current query");
     return this.dashboardService.getDashboardOverview(query);
   }
 
