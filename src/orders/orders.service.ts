@@ -237,7 +237,34 @@ export class OrdersService {
       orderBy: { createdAt: "desc" },
     });
   }
+  async findAllForAdmin() {
+    return this.prisma.order.findMany({
+      where: {},
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+        buyer: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                // // fullName: true,
+                // phone: true,
+              },
+            },
+          },
+        },
+        payments: true,
+        _count: true,
+      },
 
+      orderBy: { createdAt: "desc" },
+    });
+  }
   async findOne(id: string, userId: string, userType: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },

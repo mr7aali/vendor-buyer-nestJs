@@ -209,7 +209,7 @@ model Order {
   id              String          @id @default(uuid())
   buyerId         String
   vendorId        String
-  orderNumber     String          @unique @default(dbgenerated("'VEN-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 4))"))
+  orderNumber     String          @unique @default(dbgenerated("'VEN-' || upper(substr(md5(random()::text), 1, 4))"))
   subtotal        Decimal         @db.Decimal(10, 2)
   discountAmount  Decimal         @default(0) @db.Decimal(10, 2)
   totalAmount     Decimal         @db.Decimal(10, 2)
