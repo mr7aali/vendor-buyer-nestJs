@@ -223,19 +223,10 @@ export class OrdersService {
             product: true,
           },
         },
-        buyer: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                // // fullName: true,
-                // phone: true,
-              },
-            },
-          },
-        },
+        buyer: true,
+        vendor: true,
         payments: true,
+        _count: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -471,6 +462,7 @@ export class OrdersService {
             maxDiscountAmount: true,
           },
         },
+        _count: true,
       },
     });
 
