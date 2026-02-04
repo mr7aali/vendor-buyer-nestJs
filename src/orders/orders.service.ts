@@ -410,6 +410,76 @@ export class OrdersService {
       },
     };
   }
+
+  async orderDetailsForAdmin(id: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                price: true,
+                imageUrl: true,
+                vendorId: true,
+                categoryId: true,
+              },
+            },
+          },
+        },
+
+        buyer: {
+          select: {
+            id: true,
+            fulllName: true,
+            phone: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+        },
+        vendor: {
+          select: {
+            id: true,
+            fulllName: true,
+            phone: true,
+            businessName: true,
+            vendorCode: true,
+            logoUrl: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+        },
+        payments: true,
+        coupon: {
+          select: {
+            id: true,
+            code: true,
+            discountType: true,
+            discountValue: true,
+            minPurchaseAmount: true,
+            maxDiscountAmount: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException("Order not found");
+    }
+
+    return order;
+  }
   async findOne(id: string, userId: string, userType: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },

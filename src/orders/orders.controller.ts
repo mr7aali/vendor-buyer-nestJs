@@ -112,6 +112,18 @@ export class OrdersController {
   async findAllForAdmin(@Query() filterDto: GetOrdersFilterDto) {
     return this.ordersService.findAllForAdmin(filterDto);
   }
+
+  @Get("admin-order-details/:id")
+  @UseGuards(AdminAuthGuard)
+  @ApiOperation({
+    summary: "Get order details for admin",
+    description: "Get a specific order with full details for admin view",
+  })
+  @ApiParam({ name: "id", description: "Order ID", example: "uuid-here" })
+  async orderDetailsForAdmin(@Param("id") id: string) {
+    return this.ordersService.orderDetailsForAdmin(id);
+  }
+
   @Get(":id")
   @ApiOperation({
     summary: "Get order by ID",
