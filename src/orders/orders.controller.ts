@@ -9,6 +9,7 @@ import {
   NotFoundException,
   HttpCode,
   HttpStatus,
+  Query,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -21,6 +22,7 @@ import {
 import { OrdersService } from "./orders.service";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { UpdateOrderStatusDto } from "./dto/update-order-status.dto";
+import { GetOrdersFilterDto } from "./dto/get-orders-filter.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
@@ -103,8 +105,12 @@ export class OrdersController {
 
   @Get("get-all")
   @UseGuards(AdminAuthGuard)
-  async findAllForAdmin() {
-    return this.ordersService.findAllForAdmin();
+  @ApiOperation({
+    summary: "Get all orders for admin",
+    description: "Get all orders with filtering, searching, and pagination",
+  })
+  async findAllForAdmin(@Query() filterDto: GetOrdersFilterDto) {
+    return this.ordersService.findAllForAdmin(filterDto);
   }
   @Get(":id")
   @ApiOperation({

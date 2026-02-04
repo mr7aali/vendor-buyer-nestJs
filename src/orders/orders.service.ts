@@ -11,6 +11,9 @@ import {
   OrderStatus,
 } from "./dto/update-order-status.dto";
 import { v4 as uuidv4 } from "uuid";
+import { GetOrdersFilterDto } from "./dto/get-orders-filter.dto";
+// import { Prisma } from "@prisma/client"; // Incorrect import
+import { Prisma } from "../../generated/prisma/client";
 
 @Injectable()
 export class OrdersService {
@@ -237,33 +240,175 @@ export class OrdersService {
       orderBy: { createdAt: "desc" },
     });
   }
-  async findAllForAdmin() {
-    return this.prisma.order.findMany({
-      where: {},
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-        buyer: {
-          include: {
+  async findAllForAdmin(filterDto: GetOrdersFilterDto) {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+      startDate,
+      endDate,
+      minAmount,
+      maxAmount,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      vendorId,
+    } = filterDto;
+
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.OrderFindManyArgs["where"] = {};
+
+    // Filter by status
+    if (status) {
+      where.status = status;
+    }
+
+    // Filter by vendor
+    if (vendorId) {
+      where.vendorId = vendorId;
+    }
+
+    // Filter by date range
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) {
+        where.createdAt.gte = new Date(startDate);
+      }
+      if (endDate) {
+        where.createdAt.lte = new Date(endDate);
+      }
+    }
+
+    // Filter by amount range
+    if (minAmount !== undefined || maxAmount !== undefined) {
+      where.totalAmount = {};
+      if (minAmount !== undefined) {
+        where.totalAmount.gte = minAmount;
+      }
+      if (maxAmount !== undefined) {
+        where.totalAmount.lte = maxAmount;
+      }
+    }
+
+    // Search functionality
+    if (search) {
+      where.OR = [
+        { orderNumber: { contains: search, mode: "insensitive" } },
+        {
+          buyer: {
             user: {
-              select: {
-                id: true,
-                email: true,
-                // // fullName: true,
-                // phone: true,
-              },
+              email: { contains: search, mode: "insensitive" },
             },
           },
         },
-        payments: true,
-        _count: true,
-      },
+      ];
+    }
 
-      orderBy: { createdAt: "desc" },
-    });
+    // Dynamic sorting
+    const orderBy: Prisma.OrderFindManyArgs["orderBy"] = {};
+    if (sortBy === "buyer") {
+      orderBy.buyer = { user: { email: sortOrder } };
+    } else if (sortBy === "vendor") {
+      orderBy.vendor = { businessName: sortOrder };
+    } else {
+      orderBy[sortBy] = sortOrder;
+    }
+
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          subtotal: true,
+          discountAmount: true,
+          totalAmount: true,
+          createdAt: true,
+          // buyerId: true,
+          updatedAt: true,
+          // items: {
+          //   select: {
+          //     id: true,
+          //     quantity: true,
+          //     // price: true,
+          //     totalPrice: true,
+          //     unitPrice: true,
+          //     updatedAt: true,
+
+          //     product: {
+          //       select: {
+          //         id: true,
+          //         name: true,
+          //         sku: true,
+          //         price: true,
+          //         // imageUrl: true,
+          //       },
+          //     },
+          //   },
+          // },
+
+          buyer: {
+            select: {
+              id: true,
+              fulllName: true,
+              phone: true,
+              // user: {
+              //   select: {
+              //     id: true,
+              //     email: true,
+              //   },
+              // },
+            },
+          },
+
+          // vendor: {
+          //   select: {
+          //     id: true,
+          //     fulllName: true,
+          //     businessName: true,
+          //     vendorCode: true,
+          //     logoUrl: true,
+          //   },
+          // },
+
+          // payments: {
+          //   select: {
+          //     id: true,
+          //     amount: true,
+          //     status: true,
+          //     //  method: true,
+          //     createdAt: true,
+          //   },
+          // },
+
+          _count: {
+            select: {
+              items: true,
+              //  payments: true,
+              // productReviews: true,
+              // vendorReviews: true,
+            },
+          },
+        },
+      }),
+
+      this.prisma.order.count({ where }),
+    ]);
+
+    return {
+      data: orders,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
   async findOne(id: string, userId: string, userType: string) {
     const order = await this.prisma.order.findUnique({
