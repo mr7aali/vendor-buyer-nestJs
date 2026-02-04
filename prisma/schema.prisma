@@ -117,26 +117,28 @@ model Category {
 }
 
 model Product {
-  id             String          @id @default(uuid())
-  vendorId       String
-  categoryId     String
-  name           String
-  description    String?
-  price          Decimal         @db.Decimal(10, 2)
-  stockQuantity  Int             @default(0)
-  imageUrl       String?
-  isAvailable    Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  images         String[]
-  cartItems      CartItem[]
-  orderItems     OrderItem[]
-  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  vendor         Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  specifications Specification[]
-  productReviews ProductReview[]
-  averageRating  Float?          @default(0)
-  totalReviews   Int             @default(0)
+  id              String          @id @default(uuid())
+  vendorId        String
+  categoryId      String
+  name            String
+  description     String?
+  price           Decimal         @db.Decimal(10, 2)
+  stockQuantity   Int             @default(0)
+  imageUrl        String?
+  isAvailable     Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  images          String[]
+  sku             String          @unique
+  minimulAuantity Int
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  category        Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  vendor          Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  specifications  Specification[]
+  productReviews  ProductReview[]
+  averageRating   Float?          @default(0)
+  totalReviews    Int             @default(0)
 
   @@index([vendorId])
   @@index([categoryId])
