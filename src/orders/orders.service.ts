@@ -417,6 +417,7 @@ export class OrdersService {
                 imageUrl: true,
                 vendorId: true,
                 categoryId: true,
+                images: true,
               },
             },
           },

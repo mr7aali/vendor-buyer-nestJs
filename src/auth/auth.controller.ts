@@ -59,6 +59,12 @@ export class AuthController {
     return this.authService.registerUser(body);
   }
 
+  @Get("admin/users/:id")
+  @UseGuards(AdminAuthGuard)
+  async getUserByIdForAdmin(@Param("id") id: string) {
+    return this.authService.getUserByIdForAdmin(id);
+  }
+
   // ==================== VENDOR REGISTRATION ====================
 
   @Post("register/vendor")
@@ -90,7 +96,7 @@ export class AuthController {
       files: files,
     });
   }
-  // 1px solid red
+
   @Get("vendor/:id")
   @UseGuards(AdminAuthGuard)
   async getVendorById(@Param("id") id: string) {

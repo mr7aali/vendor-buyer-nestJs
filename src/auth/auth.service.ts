@@ -1636,6 +1636,58 @@ export class AuthService {
     return await this.prisma.buyer.findMany({});
   }
 
+  async getUserByIdForAdmin(id: string) {
+    const user = await this.prisma.buyer.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            userType: true,
+            evanAddress: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        orders: {
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+            subtotal: true,
+            discountAmount: true,
+            totalAmount: true,
+            createdAt: true,
+            vendor: {
+              select: {
+                id: true,
+                businessName: true,
+                vendorCode: true,
+              },
+            },
+            _count: true,
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        _count: {
+          select: {
+            orders: true,
+            messages: true,
+            couponAssignments: true,
+            connections: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    return user;
+  }
+
   // Service
   async getAlluser(query: GetAllUsersQueryDto) {
     const {
