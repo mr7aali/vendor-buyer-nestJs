@@ -194,6 +194,18 @@ export class AuthController {
     return this.authService.changeAdminPassword(admin.id, dto);
   }
 
+  @Get("admin/pending-buyers")
+  @UseGuards(AdminAuthGuard)
+  async getPendingBuyers() {
+    return this.authService.getPendingBuyers();
+  }
+
+  @Get("admin/pending-vendors")
+  @UseGuards(AdminAuthGuard)
+  async getPendingVendors() {
+    return this.authService.getPendingVendors();
+  }
+
   /**
    * Bootstrap super admin (one-time setup)
    */

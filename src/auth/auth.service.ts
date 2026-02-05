@@ -1012,6 +1012,75 @@ export class AuthService {
 
     return { success: true, message: "Password updated successfully" };
   }
+
+  async getPendingBuyers() {
+    return this.prisma.buyer.findMany({
+      where: {
+        isNidVerify: false,
+      },
+      select: {
+        id: true,
+        userId: true,
+        fulllName: true,
+        phone: true,
+        nidNumber: true,
+        nidFontPhotoUrl: true,
+        nidBackPhotoUrl: true,
+        profilePhotoUrl: true,
+        gender: true,
+        createdAt: true,
+        updatedAt: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  }
+
+  async getPendingVendors() {
+    return this.prisma.vendor.findMany({
+      where: {
+        OR: [{ isNidVerify: false }, { isBussinessIdVerified: false }],
+      },
+      select: {
+        id: true,
+        userId: true,
+        vendorCode: true,
+        fulllName: true,
+        phone: true,
+        address: true,
+        storename: true,
+        storeDescription: true,
+        gender: true,
+        businessName: true,
+        businessDescription: true,
+        logoUrl: true,
+        nationalIdNumber: true,
+        nidFontPhotoUrl: true,
+        nidBackPhotoUrl: true,
+        bussinessIdPhotoUrl: true,
+        isNidVerify: true,
+        isBussinessIdVerified: true,
+        createdAt: true,
+        updatedAt: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  }
   async createSuperAdmin(dto: CreateSuperAdminDto) {
     const BOOTSTRAP_SECRET =
       this.configService.get("SUPER_ADMIN_SECRET") || "INIT_SUPER_ADMIN";

@@ -43,15 +43,15 @@ model Buyer {
   userId String @unique
 
   fulllName         String
-  // email             String                  @unique
   phone             String
   nidNumber         String
-  nidFontPhotoUrl   String
-  nidBackPhotoUrl   String
-  profilePhotoUrl   String
+  nidFontPhotoUrl   String // document
+  nidBackPhotoUrl   String // document
+  profilePhotoUrl   String // document
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
   gender            String
+  isNidVerify       Boolean                 @default(false)
   user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   cart              Cart?
   couponAssignments CouponBuyerAssignment[]
@@ -68,7 +68,6 @@ model Vendor {
   vendorCode            String  @unique @default(dbgenerated("'VEN-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 8))"))
   fulllName             String
   phone                 String
-  // email               String  @unique
   address               String
   storename             String
   storeDescription      String
@@ -77,11 +76,11 @@ model Vendor {
   businessDescription   String?
   logoUrl               String
   nationalIdNumber      String
-  nidFontPhotoUrl       String
-  nidBackPhotoUrl       String
+  nidFontPhotoUrl       String //document
+  nidBackPhotoUrl       String //document
+  bussinessIdPhotoUrl   String //document
   isNidVerify           Boolean @default(false)
   bussinessRegNumber    String
-  bussinessIdPhotoUrl   String
   isBussinessIdVerified Boolean @default(false)
   website               String  @default("")
 
