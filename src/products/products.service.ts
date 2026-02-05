@@ -11,6 +11,7 @@ import {
 } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { CloudinaryService } from "src/cloudinary/cloudinary.service";
+import { randomUUID } from "crypto";
 
 @Injectable()
 export class ProductsService {
@@ -18,6 +19,34 @@ export class ProductsService {
     private prisma: PrismaService,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
+
+  private normalize(text: string, length: number) {
+    return text
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .substring(0, length)
+      .toUpperCase();
+  }
+
+  private async generateUniqueSKU(
+    vendorName: string,
+    categoryName: string,
+    productName: string,
+  ) {
+    while (true) {
+      const vendorPart = this.normalize(vendorName, 2);
+      const categoryPart = this.normalize(categoryName, 2);
+      const productPart = this.normalize(productName, 2);
+      const uniquePart = randomUUID().substring(0, 4).toUpperCase();
+
+      const sku = `${vendorPart}${categoryPart}${productPart}-${uniquePart}`;
+
+      const exists = await this.prisma.product.findUnique({
+        where: { sku },
+      });
+
+      if (!exists) return sku;
+    }
+  }
 
   async create({
     vendorId,
@@ -46,15 +75,23 @@ export class ProductsService {
     // Verify category belongs to vendor
     const category = await this.prisma.category.findUnique({
       where: { id: createProductDto.categoryId },
+      include: {
+        vendor: true,
+      },
     });
 
     if (!category) {
       throw new NotFoundException("Category not found");
     }
-
+    console.log(category.vendor.fulllName);
     if (category.vendorId !== vendorId) {
       throw new ForbiddenException("Category does not belong to this vendor");
     }
+    const sku = await this.generateUniqueSKU(
+      category.vendor.fulllName,
+      category.name,
+      createProductDto.name,
+    );
 
     try {
       // Upload all images to Cloudinary in parallel
@@ -75,9 +112,12 @@ export class ProductsService {
           price: createProductDto.price,
           stockQuantity: createProductDto.stockQuantity,
           images: imageUrls,
+          sku: sku, //it will be generate by using catagory and verndor name
+          minimulAuantity: createProductDto.minimulAuantity,
         },
         include: {
           category: true,
+
           vendor: {
             select: {
               id: true,

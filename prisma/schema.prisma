@@ -58,39 +58,47 @@ model Buyer {
   messages          Message[]
   orders            Order[]
   connections       VendorBuyerConnection[]
+  productReviews    ProductReview[]
+  vendorReviews     VendorReview[]
 }
 
 model Vendor {
-  id                  String  @id @default(uuid())
-  userId              String  @unique
-  vendorCode          String  @unique @default(dbgenerated("'VEN-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 8))"))
-  fulllName           String
-  phone               String
+  id                    String  @id @default(uuid())
+  userId                String  @unique
+  vendorCode            String  @unique @default(dbgenerated("'VEN-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 8))"))
+  fulllName             String
+  phone                 String
   // email               String  @unique
-  address             String
-  storename           String
-  storeDescription    String
-  gender              String
-  businessName        String?
-  businessDescription String?
-  logoUrl             String
-  nationalIdNumber    String
-  nidFontPhotoUrl     String
-  nidBackPhotoUrl     String
-  bussinessRegNumber  String
-  bussinessIdPhotoUrl String
+  address               String
+  storename             String
+  storeDescription      String
+  gender                String
+  businessName          String?
+  businessDescription   String?
+  logoUrl               String
+  nationalIdNumber      String
+  nidFontPhotoUrl       String
+  nidBackPhotoUrl       String
+  isNidVerify           Boolean @default(false)
+  bussinessRegNumber    String
+  bussinessIdPhotoUrl   String
+  isBussinessIdVerified Boolean @default(false)
+  website               String  @default("")
 
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  averageRating Float?   @default(0)
+  totalReviews  Int      @default(0)
 
-  categories  Category[]
-  coupons     Coupon[]
-  messages    Message[]
-  orders      Order[]
-  products    Product[]
-  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  connections VendorBuyerConnection[]
+  categories    Category[]
+  coupons       Coupon[]
+  messages      Message[]
+  orders        Order[]
+  products      Product[]
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connections   VendorBuyerConnection[]
+  vendorReviews VendorReview[]
 }
 
 model Category {
@@ -109,23 +117,28 @@ model Category {
 }
 
 model Product {
-  id             String          @id @default(uuid())
-  vendorId       String
-  categoryId     String
-  name           String
-  description    String?
-  price          Decimal         @db.Decimal(10, 2)
-  stockQuantity  Int             @default(0)
-  imageUrl       String?
-  isAvailable    Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  images         String[]
-  cartItems      CartItem[]
-  orderItems     OrderItem[]
-  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  vendor         Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  specifications Specification[]
+  id              String          @id @default(uuid())
+  vendorId        String
+  categoryId      String
+  name            String
+  description     String?
+  price           Decimal         @db.Decimal(10, 2)
+  stockQuantity   Int             @default(0)
+  imageUrl        String?
+  isAvailable     Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  images          String[]
+  sku             String          @unique
+  minimulAuantity Int
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  category        Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  vendor          Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  specifications  Specification[]
+  productReviews  ProductReview[]
+  averageRating   Float?          @default(0)
+  totalReviews    Int             @default(0)
 
   @@index([vendorId])
   @@index([categoryId])
@@ -195,23 +208,25 @@ model CartItem {
 }
 
 model Order {
-  id              String      @id @default(uuid())
+  id              String          @id @default(uuid())
   buyerId         String
   vendorId        String
-  orderNumber     String      @unique
-  subtotal        Decimal     @db.Decimal(10, 2)
-  discountAmount  Decimal     @default(0) @db.Decimal(10, 2)
-  totalAmount     Decimal     @db.Decimal(10, 2)
+  orderNumber     String          @unique @default(dbgenerated("'ORD-' || upper(substr(md5(random()::text), 1, 4))"))
+  subtotal        Decimal         @db.Decimal(10, 2)
+  discountAmount  Decimal         @default(0) @db.Decimal(10, 2)
+  totalAmount     Decimal         @db.Decimal(10, 2)
   shippingAddress String?
   couponId        String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   status          String
-  buyer           Buyer       @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  coupon          Coupon?     @relation(fields: [couponId], references: [id])
-  vendor          Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  buyer           Buyer           @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  coupon          Coupon?         @relation(fields: [couponId], references: [id])
+  vendor          Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   items           OrderItem[]
   payments        Payment?
+  productReviews  ProductReview[]
+  vendorReviews   VendorReview[]
 
   @@index([buyerId])
   @@index([vendorId])
@@ -334,6 +349,8 @@ model Admin {
   id           Int               @id @default(autoincrement())
   email        String            @unique
   passwordHash String
+  fullName     String            @default("N/A")
+  avatar       String            @default("https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80")
   role         AdminRole
   permissions  AdminPermission[]
   createdAt    DateTime          @default(now())
@@ -357,3 +374,109 @@ model AdminPermission {
 
   @@id([adminId, permissionId])
 }
+
+// Review Models
+model ProductReview {
+  id                 String   @id @default(uuid())
+  productId          String
+  buyerId            String
+  orderId            String? // Optional: Link to order for verified purchases
+  rating             Int // 1-5 stars
+  comment            String?
+  isVerifiedPurchase Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer   Buyer   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@unique([productId, buyerId, orderId]) // One review per product per order
+  @@index([productId])
+  @@index([buyerId])
+  @@index([rating])
+  @@map("product_review")
+}
+
+model VendorReview {
+  id                 String   @id @default(uuid())
+  vendorId           String
+  buyerId            String
+  orderId            String? // Optional: Link to order for verified reviews
+  rating             Int // 1-5 stars
+  comment            String?
+  isVerifiedPurchase Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  buyer  Buyer  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  order  Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@unique([vendorId, buyerId, orderId]) // One review per vendor per order
+  @@index([vendorId])
+  @@index([buyerId])
+  @@index([rating])
+  @@map("vendor_review")
+}
+
+enum ActivityType {
+  ORDER_CREATED
+  ORDER_DELIVERED
+  ORDER_CREATE_FAILED
+  VENDOR_KYC_SUBMITTED
+  USER_REGISTERED
+  PAYMENT_RECEIVED
+}
+
+enum ActorType {
+  USER
+  VENDOR
+  ADMIN
+  SYSTEM
+}
+
+model ActivityLog {
+  id String @id @default(uuid())
+
+  type        ActivityType
+  title       String
+  description String
+
+  entity   String?
+  entityId String?
+
+  actorType ActorType?
+  actorName String?
+
+  meta Json?
+
+  createdAt DateTime @default(now())
+}
+
+// Update existing models to add relations
+// model Product {
+//   // ... existing fields
+//   reviews       ProductReview[]
+//   averageRating Float?          @default(0)
+//   totalReviews  Int             @default(0)
+// }
+
+// model Vendor {
+//   // ... existing fields
+//   vendorReviews VendorReview[]
+//   averageRating Float?         @default(0)
+//   totalReviews  Int            @default(0)
+// }
+
+// model Buyer {
+//   // ... existing fields
+//   productReviews ProductReview[]
+//   vendorReviews  VendorReview[]
+// }
+
+// model Order {
+//   // ... existing fields
+//   productReviews ProductReview[]
+//   vendorReviews  VendorReview[]
+// }

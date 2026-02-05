@@ -36,8 +36,13 @@ import {
   CreateEmployeeDto,
   UpdateEmployeePermissionsDto,
 } from "./dto/Employee.dto";
-import type { UpdateProfileDto } from "./dto/update.dto";
+import type {
+  UpdateProfileDto,
+  UpdateVendorProfileDto,
+} from "./dto/update.dto";
 import { GetAllUsersQueryDto } from "./dto/getall.query.dto";
+import { GetAllVendorsQueryDto } from "./dto/getAllVendors";
+import { UpdateVendorDto } from "./dto/update-vendor.dto";
 // import { UpdateProfileDto } from "./dto/update.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 // import { UpdateEmployeePermissionsDto } from "./dto/update-employee-permissions.dto";
@@ -52,6 +57,12 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   async registerUser(@Body() body: UserRegisterDto) {
     return this.authService.registerUser(body);
+  }
+
+  @Get("admin/users/:id")
+  @UseGuards(AdminAuthGuard)
+  async getUserByIdForAdmin(@Param("id") id: string) {
+    return this.authService.getUserByIdForAdmin(id);
   }
 
   // ==================== VENDOR REGISTRATION ====================
@@ -86,8 +97,20 @@ export class AuthController {
     });
   }
 
+  @Get("vendor/:id")
+  @UseGuards(AdminAuthGuard)
+  async getVendorById(@Param("id") id: string) {
+    return this.authService.getVendorById(id);
+  }
+  @Patch("vendor/:id")
+  @UseGuards(AdminAuthGuard)
+  async updateVendor(
+    @Param("id") id: string,
+    @Body() updateDto: UpdateVendorDto,
+  ) {
+    return this.authService.updateVendor(id, updateDto);
+  }
   // ==================== BUYER REGISTRATION ====================
-
   @Post("register/buyer")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
@@ -144,7 +167,8 @@ export class AuthController {
   @Get("admin/me")
   @UseGuards(AdminAuthGuard)
   getAdminProfile(@GetUser() admin: any) {
-    return admin;
+    // return admin;
+    return this.authService.getAdminProfile(admin.id);
   }
 
   /**
@@ -320,10 +344,10 @@ export class AuthController {
     return this.authService.updateProfile(user, updateDto);
   }
 
-  @Get("all-vendor")
-  async getAllVendor() {
-    return this.authService.getAllVendor();
-  }
+  // @Get("all-vendor")
+  // async getAllVendor() {
+  //   return this.authService.getAllVendor();
+  // }
   @UseGuards(AdminAuthGuard)
   @Get("all-buyer")
   async getAllBuyer() {
@@ -338,5 +362,11 @@ export class AuthController {
   @Get("admin")
   async getAllAdminUser() {
     return this.authService.getAllAdminUser();
+  }
+  @UseGuards(AdminAuthGuard)
+  @Get("all-vendor")
+  async getAllVendors(@Query() query: GetAllVendorsQueryDto) {
+    console.log(query);
+    return this.authService.getAllVendors(query);
   }
 }

@@ -45,6 +45,11 @@ export class CreateProductDto {
   @IsNotEmpty()
   price: number;
 
+  @IsNumber()
+  @Min(0)
+  @IsNotEmpty()
+  minimulAuantity: number;
+
   @ApiProperty({
     description: "Stock quantity available",
     example: 50,
