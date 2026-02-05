@@ -968,6 +968,50 @@ export class AuthService {
       createdAt: admin.createdAt,
     };
   }
+
+  async changeAdminPassword(
+    adminId: string | number,
+    dto: {
+      currentPassword: string;
+      newPassword: string;
+      confirmPassword: string;
+    },
+  ) {
+    const id = Number(adminId);
+    if (Number.isNaN(id)) {
+      throw new BadRequestException("Invalid admin id");
+    }
+
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException("Passwords do not match");
+    }
+
+    const admin = await this.prisma.admin.findUnique({
+      where: { id },
+      select: { id: true, passwordHash: true },
+    });
+
+    if (!admin) {
+      throw new NotFoundException("Admin not found");
+    }
+
+    const isValid = await bcrypt.compare(
+      dto.currentPassword,
+      admin.passwordHash,
+    );
+
+    if (!isValid) {
+      throw new UnauthorizedException("Current password is incorrect");
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    await this.prisma.admin.update({
+      where: { id },
+      data: { passwordHash },
+    });
+
+    return { success: true, message: "Password updated successfully" };
+  }
   async createSuperAdmin(dto: CreateSuperAdminDto) {
     const BOOTSTRAP_SECRET =
       this.configService.get("SUPER_ADMIN_SECRET") || "INIT_SUPER_ADMIN";

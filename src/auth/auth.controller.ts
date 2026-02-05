@@ -46,6 +46,7 @@ import { GetAllUsersQueryDto } from "./dto/getall.query.dto";
 import { GetAllVendorsQueryDto } from "./dto/getAllVendors";
 import { UpdateVendorDto } from "./dto/update-vendor.dto";
 import { UpdateAdminProfileDto } from "./dto/update-admin-profile.dto";
+import { ChangeAdminPasswordDto } from "./dto/change-admin-password.dto";
 // import { UpdateProfileDto } from "./dto/update.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 // import { UpdateEmployeePermissionsDto } from "./dto/update-employee-permissions.dto";
@@ -184,6 +185,15 @@ export class AuthController {
     console.log(admin, "This admin.");
     return this.authService.updateAdminProfile(admin.id, dto, avatar);
   }
+  @Patch("change-admin-password")
+  @UseGuards(AdminAuthGuard)
+  async changeAdminPassword(
+    @GetUser() admin: any,
+    @Body() dto: ChangeAdminPasswordDto,
+  ) {
+    return this.authService.changeAdminPassword(admin.id, dto);
+  }
+
   /**
    * Bootstrap super admin (one-time setup)
    */
