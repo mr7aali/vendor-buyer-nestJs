@@ -47,6 +47,7 @@ import { GetAllVendorsQueryDto } from "./dto/getAllVendors";
 import { UpdateVendorDto } from "./dto/update-vendor.dto";
 import { UpdateAdminProfileDto } from "./dto/update-admin-profile.dto";
 import { ChangeAdminPasswordDto } from "./dto/change-admin-password.dto";
+import { UpdateBuyerDto } from "./dto/update-buyer.dto";
 // import { UpdateProfileDto } from "./dto/update.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 // import { UpdateEmployeePermissionsDto } from "./dto/update-employee-permissions.dto";
@@ -113,6 +114,14 @@ export class AuthController {
     @Body() updateDto: UpdateVendorDto,
   ) {
     return this.authService.updateVendor(id, updateDto);
+  }
+  @Patch("buyer/:id")
+  @UseGuards(AdminAuthGuard)
+  async updateBuyer(
+    @Param("id") id: string,
+    @Body() updateDto: UpdateBuyerDto,
+  ) {
+    return this.authService.updateBuyer(id, updateDto);
   }
   // ==================== BUYER REGISTRATION ====================
   @Post("register/buyer")

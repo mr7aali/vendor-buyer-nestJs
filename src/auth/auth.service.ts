@@ -718,6 +718,46 @@ export class AuthService {
       vendor: updatedVendor,
     };
   }
+
+  async updateBuyer(
+    id: string,
+    updateDto: {
+      fulllName?: string;
+      phone?: string;
+      nidNumber?: string;
+      gender?: string;
+      isNidVerify?: boolean;
+    },
+  ) {
+    const buyer = await this.prisma.buyer.findUnique({
+      where: { id },
+    });
+
+    if (!buyer) {
+      throw new NotFoundException(`Buyer with ID ${id} not found`);
+    }
+
+    const updatedBuyer = await this.prisma.buyer.update({
+      where: { id },
+      data: updateDto,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      message: "Buyer updated successfully",
+      buyer: updatedBuyer,
+    };
+  }
   async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: loginDto.email },
