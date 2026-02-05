@@ -889,6 +889,72 @@ export class AuthService {
       createdAt: admin.createdAt,
     };
   }
+
+  async updateAdminProfile(
+    adminId: string | number,
+    dto: {
+      email?: string;
+      fullName?: string;
+      avatar?: string;
+      password?: string;
+    },
+    avatarFile?: Express.Multer.File,
+  ) {
+    const id = Number(adminId);
+    if (Number.isNaN(id)) {
+      throw new BadRequestException("Invalid admin id");
+    }
+
+    const data: Record<string, any> = {};
+    if (dto.email) data.email = dto.email;
+    if (dto.fullName) data.fullName = dto.fullName;
+    if (dto.password) {
+      data.passwordHash = await bcrypt.hash(dto.password, 10);
+    }
+    if (avatarFile) {
+      const upload = await this.cloudinaryService.uploadFile(
+        avatarFile,
+        "admin-avatars",
+      );
+      data.avatar = upload.secure_url;
+    } else if (dto.avatar) {
+      data.avatar = dto.avatar;
+    }
+
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException("No fields provided to update");
+    }
+
+    const admin = await this.prisma.admin.update({
+      where: { id },
+      data,
+      select: {
+        avatar: true,
+        email: true,
+        fullName: true,
+        id: true,
+        role: true,
+        permissions: {
+          include: {
+            permission: true,
+          },
+        },
+        updatedAt: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      avatar: admin.avatar,
+      email: admin.email,
+      fullName: admin.fullName,
+      id: admin.id,
+      role: admin.role,
+      permissions: admin.permissions.map((p) => p.permission.key),
+      updatedAt: admin.updatedAt,
+      createdAt: admin.createdAt,
+    };
+  }
   async createSuperAdmin(dto: CreateSuperAdminDto) {
     const BOOTSTRAP_SECRET =
       this.configService.get("SUPER_ADMIN_SECRET") || "INIT_SUPER_ADMIN";

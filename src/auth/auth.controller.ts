@@ -8,6 +8,7 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFiles,
+  UploadedFile,
   Param,
   ParseIntPipe,
   Delete,
@@ -22,6 +23,7 @@ import { UserRegisterDto } from "./dto/user-create.dto";
 import { BuyerRegisterFullDto } from "./dto/buyer-register-full.dto";
 import { VendorRegisterDto } from "./dto/vendor-register.dto";
 import { FileFieldsInterceptor } from "@nestjs/platform-express";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
   ForgotPasswordDto,
   ResetPasswordDto,
@@ -43,6 +45,7 @@ import type {
 import { GetAllUsersQueryDto } from "./dto/getall.query.dto";
 import { GetAllVendorsQueryDto } from "./dto/getAllVendors";
 import { UpdateVendorDto } from "./dto/update-vendor.dto";
+import { UpdateAdminProfileDto } from "./dto/update-admin-profile.dto";
 // import { UpdateProfileDto } from "./dto/update.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 // import { UpdateEmployeePermissionsDto } from "./dto/update-employee-permissions.dto";
@@ -170,7 +173,17 @@ export class AuthController {
     // return admin;
     return this.authService.getAdminProfile(admin.id);
   }
-
+  @Patch("admin-profile-update")
+  @UseGuards(AdminAuthGuard)
+  @UseInterceptors(FileInterceptor("avatar"))
+  async updateAdminProfile(
+    @GetUser() admin: any,
+    @Body() dto: UpdateAdminProfileDto,
+    @UploadedFile() avatar?: Express.Multer.File,
+  ) {
+    console.log(admin, "This admin.");
+    return this.authService.updateAdminProfile(admin.id, dto, avatar);
+  }
   /**
    * Bootstrap super admin (one-time setup)
    */
