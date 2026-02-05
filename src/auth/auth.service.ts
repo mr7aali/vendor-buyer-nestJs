@@ -774,7 +774,7 @@ export class AuthService {
       };
     }
   }
-
+  //1px solid red
   async adminLogin(dto: AdminLoginDto) {
     const admin = await this.prisma.admin.findUnique({
       where: { email: dto.email },
@@ -819,10 +819,76 @@ export class AuthService {
         email: admin.email,
         role: admin.role,
         permissions: payload.permissions,
+        avatar: admin.avatar,
+        fullName: admin.fullName,
       },
     };
   }
+  // async getAdminProfile(id: string) {
+  //   return this.prisma.admin.findUnique({
+  //     where: {
+  //       id: Number(id),
+  //     },
+  //     select: {
+  //       avatar: true,
+  //       email: true,
+  //       fullName: true,
+  //       id: true,
+  //       role: true,
+  //       permissions: {
+  //         include: {
+  //           permission: true,
+  //         },
+  //       },
+  //       _count: true,
+  //       updatedAt: true,
+  //       createdAt: true,
+  //     },
+  //     // include: {
+  //     //   permissions: {
+  //     //     p,
+  //     //   },
+  //     // },
+  //   });
+  // }
+  async getAdminProfile(id: string) {
+    const admin = await this.prisma.admin.findUnique({
+      where: {
+        id: Number(id),
+      },
+      select: {
+        avatar: true,
+        email: true,
+        fullName: true,
+        id: true,
+        role: true,
+        permissions: {
+          include: {
+            permission: true,
+          },
+        },
+        _count: true,
+        updatedAt: true,
+        createdAt: true,
+      },
+    });
 
+    if (!admin) {
+      throw new NotFoundException("Admin not found");
+    }
+
+    return {
+      avatar: admin.avatar,
+      email: admin.email,
+      fullName: admin.fullName,
+      id: admin.id,
+      role: admin.role,
+      permissions: admin.permissions.map((p) => p.permission.key),
+      _count: admin._count,
+      updatedAt: admin.updatedAt,
+      createdAt: admin.createdAt,
+    };
+  }
   async createSuperAdmin(dto: CreateSuperAdminDto) {
     const BOOTSTRAP_SECRET =
       this.configService.get("SUPER_ADMIN_SECRET") || "INIT_SUPER_ADMIN";

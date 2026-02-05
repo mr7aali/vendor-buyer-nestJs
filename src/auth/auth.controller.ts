@@ -167,7 +167,8 @@ export class AuthController {
   @Get("admin/me")
   @UseGuards(AdminAuthGuard)
   getAdminProfile(@GetUser() admin: any) {
-    return admin;
+    // return admin;
+    return this.authService.getAdminProfile(admin.id);
   }
 
   /**
