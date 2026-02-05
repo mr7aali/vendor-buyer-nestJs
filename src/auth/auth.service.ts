@@ -912,6 +912,19 @@ export class AuthService {
       data.passwordHash = await bcrypt.hash(dto.password, 10);
     }
     if (avatarFile) {
+      const existing = await this.prisma.admin.findUnique({
+        where: { id },
+        select: { avatar: true },
+      });
+
+      if (existing?.avatar && existing.avatar.includes("res.cloudinary.com")) {
+        try {
+          await this.cloudinaryService.deleteFileByUrl(existing.avatar);
+        } catch (error) {
+          // Ignore delete failures to avoid blocking profile updates.
+        }
+      }
+
       const upload = await this.cloudinaryService.uploadFile(
         avatarFile,
         "admin-avatars",
