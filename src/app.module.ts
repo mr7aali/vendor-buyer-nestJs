@@ -18,6 +18,7 @@ import { CloudinaryModule } from "./cloudinary/cloudinary.module";
 import { ReviewModule } from "./prisma/review.module.js";
 import { AdminDashboardModule } from "./dashboard/dashboard.module.js";
 import { AnalyticsModule } from "./analytics/analytics.module.js";
+import { ChattingWithAdminModule } from "./chatting-with-admin/chatting-with-admin.module.js";
 // import { MessagesGateway } from "./messages/messages.gateway.js";
 
 @Module({
@@ -41,6 +42,7 @@ import { AnalyticsModule } from "./analytics/analytics.module.js";
     ReviewModule,
     AdminDashboardModule,
     AnalyticsModule,
+    ChattingWithAdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

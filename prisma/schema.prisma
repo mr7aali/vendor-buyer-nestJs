@@ -56,6 +56,8 @@ model Buyer {
   cart              Cart?
   couponAssignments CouponBuyerAssignment[]
   messages          Message[]
+  adminChatThread   AdminChatThread?
+  adminChatMessages AdminChatMessage[]      @relation("AdminChatBuyerMessages")
   orders            Order[]
   connections       VendorBuyerConnection[]
   productReviews    ProductReview[]
@@ -90,14 +92,16 @@ model Vendor {
   averageRating Float?   @default(0)
   totalReviews  Int      @default(0)
 
-  categories    Category[]
-  coupons       Coupon[]
-  messages      Message[]
-  orders        Order[]
-  products      Product[]
-  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  connections   VendorBuyerConnection[]
-  vendorReviews VendorReview[]
+  categories        Category[]
+  coupons           Coupon[]
+  messages          Message[]
+  adminChatThread   AdminChatThread?
+  adminChatMessages AdminChatMessage[]      @relation("AdminChatVendorMessages")
+  orders            Order[]
+  products          Product[]
+  user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connections       VendorBuyerConnection[]
+  vendorReviews     VendorReview[]
 }
 
 model Category {
@@ -345,16 +349,18 @@ enum AdminRole {
 }
 
 model Admin {
-  id           Int               @id @default(autoincrement())
-  email        String            @unique
-  passwordHash String
-  bio          String            @default("")
-  fullName     String            @default("N/A")
-  avatar       String            @default("https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80")
-  role         AdminRole
-  permissions  AdminPermission[]
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  id                Int                @id @default(autoincrement())
+  email             String             @unique
+  passwordHash      String
+  bio               String             @default("")
+  fullName          String             @default("N/A")
+  avatar            String             @default("https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80")
+  role              AdminRole
+  permissions       AdminPermission[]
+  adminChatThreads  AdminChatThread[]  @relation("AdminChatAssignedAdmin")
+  adminChatMessages AdminChatMessage[] @relation("AdminChatAdminMessages")
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model Permission {
@@ -427,6 +433,54 @@ enum ActivityType {
   VENDOR_KYC_SUBMITTED
   USER_REGISTERED
   PAYMENT_RECEIVED
+}
+
+enum AdminChatSenderType {
+  ADMIN
+  BUYER
+  VENDOR
+}
+
+model AdminChatThread {
+  id              String   @id @default(uuid())
+  buyerId         String?
+  vendorId        String?
+  assignedAdminId Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  buyer         Buyer?             @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  vendor        Vendor?            @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  assignedAdmin Admin?             @relation("AdminChatAssignedAdmin", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  messages      AdminChatMessage[]
+
+  @@unique([buyerId])
+  @@unique([vendorId])
+  @@index([buyerId])
+  @@index([vendorId])
+  @@index([assignedAdminId])
+}
+
+model AdminChatMessage {
+  id             String   @id @default(uuid())
+  threadId       String
+  senderType     String
+  senderAdminId  Int?
+  senderBuyerId  String?
+  senderVendorId String?
+  messageText    String
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  thread       AdminChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderAdmin  Admin?          @relation("AdminChatAdminMessages", fields: [senderAdminId], references: [id], onDelete: Cascade)
+  senderBuyer  Buyer?          @relation("AdminChatBuyerMessages", fields: [senderBuyerId], references: [id], onDelete: Cascade)
+  senderVendor Vendor?         @relation("AdminChatVendorMessages", fields: [senderVendorId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([senderType])
+  @@index([createdAt])
 }
 
 enum ActorType {
