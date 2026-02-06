@@ -22,4 +22,10 @@ export class UpdateAdminProfileDto {
   @IsString()
   @MinLength(6)
   password?: string;
+
+  @ApiPropertyOptional({ description: "New bio (min 5 chars)" })
+  @IsOptional()
+  @IsString()
+  @MinLength(5)
+  bio?: string;
 }

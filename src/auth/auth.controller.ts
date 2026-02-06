@@ -191,7 +191,6 @@ export class AuthController {
     @Body() dto: UpdateAdminProfileDto,
     @UploadedFile() avatar?: Express.Multer.File,
   ) {
-    console.log(admin, "This admin.");
     return this.authService.updateAdminProfile(admin.id, dto, avatar);
   }
   @Patch("change-admin-password")
