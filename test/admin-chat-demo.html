@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Chat Demo (Buyer/Vendor)</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      body {
+        margin: 0;
+        background: #f6f7f9;
+        color: #1f2937;
+      }
+      .container {
+        max-width: 1100px;
+        margin: 32px auto;
+        padding: 0 20px;
+      }
+      .card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      h1 {
+        margin: 0 0 12px 0;
+      }
+      label {
+        font-size: 12px;
+        color: #6b7280;
+      }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        font-size: 14px;
+        outline: none;
+      }
+      input:focus,
+      textarea:focus,
+      select:focus {
+        border-color: #278687;
+        box-shadow: 0 0 0 3px rgba(39, 134, 135, 0.15);
+      }
+      button {
+        background: #278687;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .messages {
+        height: 360px;
+        overflow-y: auto;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .bubble {
+        max-width: 70%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 14px;
+      }
+      .bubble.user {
+        align-self: flex-end;
+        background: #278687;
+        color: white;
+      }
+      .bubble.admin {
+        align-self: flex-start;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+      }
+      .meta {
+        font-size: 11px;
+        color: #6b7280;
+        margin-top: 4px;
+      }
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .status {
+        font-size: 12px;
+        color: #6b7280;
+      }
+      .hint {
+        font-size: 12px;
+        color: #6b7280;
+        margin-top: 8px;
+      }
+      @media (max-width: 800px) {
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Admin Chat Demo (Buyer/Vendor)</h1>
+      <p class="hint">
+        This page uses the user endpoints and websocket namespace
+        <code>/admin-chats</code>. Paste a buyer/vendor access token to test.
+      </p>
+
+      <div class="card stack">
+        <div class="row">
+          <div class="stack">
+            <label>API Base URL</label>
+            <input id="apiBase" value="http://localhost:3000" />
+          </div>
+          <div class="stack">
+            <label>Socket URL</label>
+            <input id="socketBase" value="http://localhost:3000" />
+          </div>
+        </div>
+        <div class="stack">
+          <label>Buyer/Vendor Access Token</label>
+          <textarea
+            id="token"
+            rows="2"
+            placeholder="Paste JWT access token here"
+          ></textarea>
+        </div>
+        <div class="row">
+          <button id="connectBtn">Connect</button>
+          <button id="disconnectBtn" disabled>Disconnect</button>
+        </div>
+        <div class="status" id="status">Not connected</div>
+      </div>
+
+      <div class="card stack">
+        <div class="row">
+          <button id="loadThreadBtn" disabled>Load Thread</button>
+          <button id="loadMessagesBtn" disabled>Load Messages</button>
+        </div>
+        <div class="messages" id="messages"></div>
+        <div class="row">
+          <input
+            id="messageInput"
+            placeholder="Type a message as buyer/vendor..."
+          />
+          <button id="sendBtn" disabled>Send</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+      const statusEl = document.getElementById("status");
+      const connectBtn = document.getElementById("connectBtn");
+      const disconnectBtn = document.getElementById("disconnectBtn");
+      const loadThreadBtn = document.getElementById("loadThreadBtn");
+      const loadMessagesBtn = document.getElementById("loadMessagesBtn");
+      const sendBtn = document.getElementById("sendBtn");
+      const messageInput = document.getElementById("messageInput");
+      const messagesEl = document.getElementById("messages");
+
+      let socket = null;
+      let threadId = null;
+
+      const appendMessage = (message, type) => {
+        const bubble = document.createElement("div");
+        bubble.className = `bubble ${type}`;
+        bubble.textContent = message.messageText || message.text || "";
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = new Date(
+          message.createdAt || Date.now()
+        ).toLocaleTimeString();
+        bubble.appendChild(meta);
+        messagesEl.appendChild(bubble);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      };
+
+      const setStatus = (text) => {
+        statusEl.textContent = text;
+      };
+
+      const getApiBase = () =>
+        document.getElementById("apiBase").value.trim();
+      const getSocketBase = () =>
+        document.getElementById("socketBase").value.trim();
+      const getToken = () => document.getElementById("token").value.trim();
+
+      connectBtn.addEventListener("click", () => {
+        const token = getToken();
+        if (!token) {
+          alert("Token required");
+          return;
+        }
+        const socketBase = getSocketBase();
+        socket = io(`${socketBase}/admin-chats`, {
+          auth: { token },
+        });
+
+        socket.on("connect", () => {
+          setStatus(`Connected (socket id: ${socket.id})`);
+          connectBtn.disabled = true;
+          disconnectBtn.disabled = false;
+          loadThreadBtn.disabled = false;
+          loadMessagesBtn.disabled = false;
+          sendBtn.disabled = false;
+        });
+
+        socket.on("disconnect", () => {
+          setStatus("Disconnected");
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+          loadThreadBtn.disabled = true;
+          loadMessagesBtn.disabled = true;
+          sendBtn.disabled = true;
+        });
+
+        socket.on("admin_chat_new_message", (message) => {
+          if (!threadId || message.threadId !== threadId) {
+            return;
+          }
+          const sender =
+            message.senderType === "ADMIN" ? "admin" : "user";
+          appendMessage(message, sender);
+        });
+
+        socket.on("connect_error", (err) => {
+          setStatus(`Connect error: ${err.message}`);
+        });
+      });
+
+      disconnectBtn.addEventListener("click", () => {
+        if (socket) {
+          socket.disconnect();
+          socket = null;
+        }
+      });
+
+      loadThreadBtn.addEventListener("click", async () => {
+        const token = getToken();
+        const apiBase = getApiBase();
+        const res = await fetch(`${apiBase}/admin-chats/user/thread`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          setStatus(`Failed to load thread: ${res.status}`);
+          return;
+        }
+        const data = await res.json();
+        threadId = data.id;
+        setStatus(`Thread ready: ${threadId}`);
+      });
+
+      loadMessagesBtn.addEventListener("click", async () => {
+        if (!threadId) {
+          await loadThreadBtn.click();
+        }
+        const token = getToken();
+        const apiBase = getApiBase();
+        const res = await fetch(`${apiBase}/admin-chats/user/messages`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          setStatus(`Failed to load messages: ${res.status}`);
+          return;
+        }
+        const data = await res.json();
+        const messages = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.data)
+            ? data.data
+            : [];
+        messagesEl.innerHTML = "";
+        messages.forEach((msg) => {
+          const sender = msg.senderType === "ADMIN" ? "admin" : "user";
+          appendMessage(msg, sender);
+        });
+        setStatus(`Loaded ${messages.length} messages`);
+      });
+
+      sendBtn.addEventListener("click", async () => {
+        const text = messageInput.value.trim();
+        if (!text) return;
+
+        if (socket && socket.connected) {
+          socket.emit("admin_chat_send", { messageText: text });
+          messageInput.value = "";
+          return;
+        }
+
+        const token = getToken();
+        const apiBase = getApiBase();
+        const res = await fetch(`${apiBase}/admin-chats/user/messages`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ messageText: text }),
+        });
+
+        if (!res.ok) {
+          setStatus(`Failed to send message: ${res.status}`);
+          return;
+        }
+
+        const data = await res.json();
+        appendMessage(data, "user");
+        messageInput.value = "";
+      });
+    </script>
+  </body>
+</html>
