@@ -14,20 +14,6 @@ import {
   UserGrowthDataPoint,
 } from "./analytics.dto";
 import { Decimal } from "@prisma/client/runtime/index-browser";
-// import {
-//   AnalyticsQueryDto,
-//   TimeRange,
-//   CompleteAnalyticsResponse,
-//   RevenueChartResponse,
-//   UserGrowthChartResponse,
-//   OrderGrowthChartResponse,
-//   SalesDistributionResponse,
-//   RevenueDataPoint,
-//   UserGrowthDataPoint,
-//   OrderGrowthDataPoint,
-//   CategoryData,
-// } from "./dto/analytics.dto";
-// import { Decimal } from "@prisma/client/runtime/library";
 
 @Injectable()
 export class AnalyticsService {
@@ -143,11 +129,7 @@ export class AnalyticsService {
     );
 
     // Process order growth data
-    const orderGrowth = this.processOrderGrowthData(
-      orders,
-      periods,
-      timeRange,
-    );
+    const orderGrowth = this.processOrderGrowthData(orders, periods, timeRange);
 
     // Process sales distribution
     const categories = this.processSalesDistribution(
