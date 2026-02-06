@@ -902,6 +902,7 @@ export class AuthService {
         fullName: true,
         id: true,
         role: true,
+        bio: true,
         permissions: {
           include: {
             permission: true,
@@ -937,6 +938,7 @@ export class AuthService {
       fullName?: string;
       avatar?: string;
       password?: string;
+      bio?: string;
     },
     avatarFile?: Express.Multer.File,
   ) {
@@ -948,6 +950,7 @@ export class AuthService {
     const data: Record<string, any> = {};
     if (dto.email) data.email = dto.email;
     if (dto.fullName) data.fullName = dto.fullName;
+    if (dto.bio) data.bio = dto.bio;
     if (dto.password) {
       data.passwordHash = await bcrypt.hash(dto.password, 10);
     }
@@ -987,6 +990,7 @@ export class AuthService {
         fullName: true,
         id: true,
         role: true,
+        bio: true,
         permissions: {
           include: {
             permission: true,
@@ -1003,6 +1007,7 @@ export class AuthService {
       fullName: admin.fullName,
       id: admin.id,
       role: admin.role,
+      bio: admin.bio,
       permissions: admin.permissions.map((p) => p.permission.key),
       updatedAt: admin.updatedAt,
       createdAt: admin.createdAt,
