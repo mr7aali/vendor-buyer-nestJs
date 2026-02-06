@@ -718,6 +718,46 @@ export class AuthService {
       vendor: updatedVendor,
     };
   }
+
+  async updateBuyer(
+    id: string,
+    updateDto: {
+      fulllName?: string;
+      phone?: string;
+      nidNumber?: string;
+      gender?: string;
+      isNidVerify?: boolean;
+    },
+  ) {
+    const buyer = await this.prisma.buyer.findUnique({
+      where: { id },
+    });
+
+    if (!buyer) {
+      throw new NotFoundException(`Buyer with ID ${id} not found`);
+    }
+
+    const updatedBuyer = await this.prisma.buyer.update({
+      where: { id },
+      data: updateDto,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      message: "Buyer updated successfully",
+      buyer: updatedBuyer,
+    };
+  }
   async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: loginDto.email },
@@ -888,6 +928,198 @@ export class AuthService {
       updatedAt: admin.updatedAt,
       createdAt: admin.createdAt,
     };
+  }
+
+  async updateAdminProfile(
+    adminId: string | number,
+    dto: {
+      email?: string;
+      fullName?: string;
+      avatar?: string;
+      password?: string;
+    },
+    avatarFile?: Express.Multer.File,
+  ) {
+    const id = Number(adminId);
+    if (Number.isNaN(id)) {
+      throw new BadRequestException("Invalid admin id");
+    }
+
+    const data: Record<string, any> = {};
+    if (dto.email) data.email = dto.email;
+    if (dto.fullName) data.fullName = dto.fullName;
+    if (dto.password) {
+      data.passwordHash = await bcrypt.hash(dto.password, 10);
+    }
+    if (avatarFile) {
+      const existing = await this.prisma.admin.findUnique({
+        where: { id },
+        select: { avatar: true },
+      });
+
+      if (existing?.avatar && existing.avatar.includes("res.cloudinary.com")) {
+        try {
+          await this.cloudinaryService.deleteFileByUrl(existing.avatar);
+        } catch (error) {
+          // Ignore delete failures to avoid blocking profile updates.
+        }
+      }
+
+      const upload = await this.cloudinaryService.uploadFile(
+        avatarFile,
+        "admin-avatars",
+      );
+      data.avatar = upload.secure_url;
+    } else if (dto.avatar) {
+      data.avatar = dto.avatar;
+    }
+
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException("No fields provided to update");
+    }
+
+    const admin = await this.prisma.admin.update({
+      where: { id },
+      data,
+      select: {
+        avatar: true,
+        email: true,
+        fullName: true,
+        id: true,
+        role: true,
+        permissions: {
+          include: {
+            permission: true,
+          },
+        },
+        updatedAt: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      avatar: admin.avatar,
+      email: admin.email,
+      fullName: admin.fullName,
+      id: admin.id,
+      role: admin.role,
+      permissions: admin.permissions.map((p) => p.permission.key),
+      updatedAt: admin.updatedAt,
+      createdAt: admin.createdAt,
+    };
+  }
+
+  async changeAdminPassword(
+    adminId: string | number,
+    dto: {
+      currentPassword: string;
+      newPassword: string;
+      confirmPassword: string;
+    },
+  ) {
+    const id = Number(adminId);
+    if (Number.isNaN(id)) {
+      throw new BadRequestException("Invalid admin id");
+    }
+
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException("Passwords do not match");
+    }
+
+    const admin = await this.prisma.admin.findUnique({
+      where: { id },
+      select: { id: true, passwordHash: true },
+    });
+
+    if (!admin) {
+      throw new NotFoundException("Admin not found");
+    }
+
+    const isValid = await bcrypt.compare(
+      dto.currentPassword,
+      admin.passwordHash,
+    );
+
+    if (!isValid) {
+      throw new UnauthorizedException("Current password is incorrect");
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    await this.prisma.admin.update({
+      where: { id },
+      data: { passwordHash },
+    });
+
+    return { success: true, message: "Password updated successfully" };
+  }
+
+  async getPendingBuyers() {
+    return this.prisma.buyer.findMany({
+      where: {
+        isNidVerify: false,
+      },
+      select: {
+        id: true,
+        userId: true,
+        fulllName: true,
+        phone: true,
+        nidNumber: true,
+        nidFontPhotoUrl: true,
+        nidBackPhotoUrl: true,
+        profilePhotoUrl: true,
+        gender: true,
+        createdAt: true,
+        updatedAt: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  }
+
+  async getPendingVendors() {
+    return this.prisma.vendor.findMany({
+      where: {
+        OR: [{ isNidVerify: false }, { isBussinessIdVerified: false }],
+      },
+      select: {
+        id: true,
+        userId: true,
+        vendorCode: true,
+        fulllName: true,
+        phone: true,
+        address: true,
+        storename: true,
+        storeDescription: true,
+        gender: true,
+        businessName: true,
+        businessDescription: true,
+        logoUrl: true,
+        nationalIdNumber: true,
+        nidFontPhotoUrl: true,
+        nidBackPhotoUrl: true,
+        bussinessIdPhotoUrl: true,
+        isNidVerify: true,
+        isBussinessIdVerified: true,
+        createdAt: true,
+        updatedAt: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
   }
   async createSuperAdmin(dto: CreateSuperAdminDto) {
     const BOOTSTRAP_SECRET =

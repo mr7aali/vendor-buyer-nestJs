@@ -8,6 +8,7 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFiles,
+  UploadedFile,
   Param,
   ParseIntPipe,
   Delete,
@@ -22,6 +23,7 @@ import { UserRegisterDto } from "./dto/user-create.dto";
 import { BuyerRegisterFullDto } from "./dto/buyer-register-full.dto";
 import { VendorRegisterDto } from "./dto/vendor-register.dto";
 import { FileFieldsInterceptor } from "@nestjs/platform-express";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
   ForgotPasswordDto,
   ResetPasswordDto,
@@ -43,6 +45,9 @@ import type {
 import { GetAllUsersQueryDto } from "./dto/getall.query.dto";
 import { GetAllVendorsQueryDto } from "./dto/getAllVendors";
 import { UpdateVendorDto } from "./dto/update-vendor.dto";
+import { UpdateAdminProfileDto } from "./dto/update-admin-profile.dto";
+import { ChangeAdminPasswordDto } from "./dto/change-admin-password.dto";
+import { UpdateBuyerDto } from "./dto/update-buyer.dto";
 // import { UpdateProfileDto } from "./dto/update.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 // import { UpdateEmployeePermissionsDto } from "./dto/update-employee-permissions.dto";
@@ -110,6 +115,14 @@ export class AuthController {
   ) {
     return this.authService.updateVendor(id, updateDto);
   }
+  @Patch("buyer/:id")
+  @UseGuards(AdminAuthGuard)
+  async updateBuyer(
+    @Param("id") id: string,
+    @Body() updateDto: UpdateBuyerDto,
+  ) {
+    return this.authService.updateBuyer(id, updateDto);
+  }
   // ==================== BUYER REGISTRATION ====================
   @Post("register/buyer")
   @UseGuards(JwtAuthGuard)
@@ -169,6 +182,37 @@ export class AuthController {
   getAdminProfile(@GetUser() admin: any) {
     // return admin;
     return this.authService.getAdminProfile(admin.id);
+  }
+  @Patch("admin-profile-update")
+  @UseGuards(AdminAuthGuard)
+  @UseInterceptors(FileInterceptor("avatar"))
+  async updateAdminProfile(
+    @GetUser() admin: any,
+    @Body() dto: UpdateAdminProfileDto,
+    @UploadedFile() avatar?: Express.Multer.File,
+  ) {
+    console.log(admin, "This admin.");
+    return this.authService.updateAdminProfile(admin.id, dto, avatar);
+  }
+  @Patch("change-admin-password")
+  @UseGuards(AdminAuthGuard)
+  async changeAdminPassword(
+    @GetUser() admin: any,
+    @Body() dto: ChangeAdminPasswordDto,
+  ) {
+    return this.authService.changeAdminPassword(admin.id, dto);
+  }
+
+  @Get("admin/pending-buyers")
+  @UseGuards(AdminAuthGuard)
+  async getPendingBuyers() {
+    return this.authService.getPendingBuyers();
+  }
+
+  @Get("admin/pending-vendors")
+  @UseGuards(AdminAuthGuard)
+  async getPendingVendors() {
+    return this.authService.getPendingVendors();
   }
 
   /**
