@@ -335,12 +335,28 @@ model Notification {
   userId    String
   title     String
   message   String
+  type      NotificationType     @default(info)
+  category  NotificationCategory @default(system)
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+enum NotificationType {
+  info
+  success
+  warning
+  error
+}
+
+enum NotificationCategory {
+  system
+  buyer
+  vendor
+  broadcast
 }
 
 enum AdminRole {

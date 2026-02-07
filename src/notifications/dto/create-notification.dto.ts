@@ -14,6 +14,13 @@ export enum NotificationType {
   ERROR = "error",
 }
 
+export enum NotificationCategory {
+  SYSTEM = "system",
+  BUYER = "buyer",
+  VENDOR = "vendor",
+  BROADCAST = "broadcast",
+}
+
 export class CreateNotificationDto {
   @ApiProperty({
     description: "User ID (UUID) to send notification to",
@@ -48,4 +55,14 @@ export class CreateNotificationDto {
   @IsEnum(NotificationType)
   @IsNotEmpty()
   type: NotificationType;
+
+  @ApiProperty({
+    description: "Notification category",
+    enum: NotificationCategory,
+    example: NotificationCategory.SYSTEM,
+    required: false,
+  })
+  @IsEnum(NotificationCategory)
+  @IsOptional()
+  category?: NotificationCategory;
 }
