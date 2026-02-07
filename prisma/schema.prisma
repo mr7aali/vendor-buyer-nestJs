@@ -507,30 +507,3 @@ model ActivityLog {
 
   createdAt DateTime @default(now())
 }
-
-// Update existing models to add relations
-// model Product {
-//   // ... existing fields
-//   reviews       ProductReview[]
-//   averageRating Float?          @default(0)
-//   totalReviews  Int             @default(0)
-// }
-
-// model Vendor {
-//   // ... existing fields
-//   vendorReviews VendorReview[]
-//   averageRating Float?         @default(0)
-//   totalReviews  Int            @default(0)
-// }
-
-// model Buyer {
-//   // ... existing fields
-//   productReviews ProductReview[]
-//   vendorReviews  VendorReview[]
-// }
-
-// model Order {
-//   // ... existing fields
-//   productReviews ProductReview[]
-//   vendorReviews  VendorReview[]
-// }
