@@ -14,10 +14,15 @@ import { v4 as uuidv4 } from "uuid";
 import { GetOrdersFilterDto } from "./dto/get-orders-filter.dto";
 // import { Prisma } from "@prisma/client"; // Incorrect import
 import { Prisma } from "../../generated/prisma/client";
+import { NotificationsService } from "../notifications/notifications.service";
+import { NotificationType } from "../notifications/dto/create-notification.dto";
 
 @Injectable()
 export class OrdersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async create(buyerId: string, createOrderDto: CreateOrderDto) {
     // Verify connection
@@ -106,6 +111,33 @@ export class OrdersService {
         shippingAddress: createOrderDto.shippingAddress,
       },
     });
+
+    const [buyer, vendor] = await Promise.all([
+      this.prisma.buyer.findUnique({
+        where: { id: buyerId },
+        select: { userId: true, fulllName: true },
+      }),
+      this.prisma.vendor.findUnique({
+        where: { id: createOrderDto.vendorId },
+        select: { userId: true, storename: true, businessName: true },
+      }),
+    ]);
+
+    if (buyer?.userId) {
+      await this.notificationsService.notifyBuyer(buyer.userId, {
+        title: "Order created",
+        message: `Your order ${orderNumber} has been placed successfully.`,
+        type: NotificationType.SUCCESS,
+      });
+    }
+
+    if (vendor?.userId) {
+      await this.notificationsService.notifyVendor(vendor.userId, {
+        title: "New order received",
+        message: `You received a new order ${orderNumber}.`,
+        type: NotificationType.INFO,
+      });
+    }
 
     // Create order items and update stock
     for (const item of vendorItems) {
@@ -532,7 +564,7 @@ export class OrdersService {
       throw new ForbiddenException("You do not have access to this order");
     }
 
-    return this.prisma.order.update({
+    const updated = await this.prisma.order.update({
       where: { id },
       data: {
         status: updateOrderStatusDto.status,
@@ -545,6 +577,49 @@ export class OrdersService {
         },
       },
     });
+
+    if (
+      updateOrderStatusDto.status === OrderStatus.DELIVERED ||
+      updateOrderStatusDto.status === OrderStatus.CANCELLED
+    ) {
+      const [buyer, vendor] = await Promise.all([
+        this.prisma.buyer.findUnique({
+          where: { id: order.buyerId },
+          select: { userId: true },
+        }),
+        this.prisma.vendor.findUnique({
+          where: { id: order.vendorId },
+          select: { userId: true },
+        }),
+      ]);
+
+      if (buyer?.userId) {
+        await this.notificationsService.notifyBuyer(buyer.userId, {
+          title:
+            updateOrderStatusDto.status === OrderStatus.DELIVERED
+              ? "Order delivered"
+              : "Order cancelled",
+          message: `Your order ${order.orderNumber} status is now ${updateOrderStatusDto.status.toLowerCase()}.`,
+          type:
+            updateOrderStatusDto.status === OrderStatus.DELIVERED
+              ? NotificationType.SUCCESS
+              : NotificationType.WARNING,
+        });
+      }
+
+      if (vendor?.userId) {
+        await this.notificationsService.notifyVendor(vendor.userId, {
+          title:
+            updateOrderStatusDto.status === OrderStatus.DELIVERED
+              ? "Order delivered"
+              : "Order cancelled",
+          message: `Order ${order.orderNumber} status updated to ${updateOrderStatusDto.status.toLowerCase()}.`,
+          type: NotificationType.INFO,
+        });
+      }
+    }
+
+    return updated;
   }
 
   private generateOrderNumber(): string {

@@ -4,25 +4,35 @@ import { PrismaService } from "../prisma/prisma.service";
 import {
   CreateNotificationDto,
   NotificationCategory,
+  NotificationType,
 } from "./dto/create-notification.dto";
 import {
   BroadcastNotificationDto,
   BroadcastTarget,
 } from "./dto/broadcast-notification.dto";
 import { UserType } from "../auth/dto/register.dto";
+import { NotificationsGateway } from "./notifications.gateway";
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsGateway: NotificationsGateway,
+  ) {}
 
   async create(createNotificationDto: CreateNotificationDto) {
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         ...createNotificationDto,
         category:
           createNotificationDto.category ?? NotificationCategory.SYSTEM,
       },
     });
+    this.notificationsGateway.emitToUser(
+      notification.userId,
+      notification,
+    );
+    return notification;
   }
 
   async createBroadcast(dto: BroadcastNotificationDto) {
@@ -64,12 +74,71 @@ export class NotificationsService {
       skipDuplicates: true,
     });
 
+    const broadcastPayload = {
+      title: dto.title,
+      message: dto.message,
+      type: dto.type ?? "info",
+      category,
+      broadcastId,
+      createdAt: new Date().toISOString(),
+    };
+
+    users.forEach((user) => {
+      this.notificationsGateway.emitToUser(user.id, broadcastPayload);
+    });
+
     return { count: result.count };
+  }
+
+  async notifyBuyer(
+    userId: string,
+    payload: { title: string; message: string; type?: NotificationType },
+  ) {
+    return this.create({
+      userId,
+      title: payload.title,
+      message: payload.message,
+      type: payload.type ?? NotificationType.INFO,
+      category: NotificationCategory.BUYER,
+    });
+  }
+
+  async notifyVendor(
+    userId: string,
+    payload: { title: string; message: string; type?: NotificationType },
+  ) {
+    return this.create({
+      userId,
+      title: payload.title,
+      message: payload.message,
+      type: payload.type ?? NotificationType.INFO,
+      category: NotificationCategory.VENDOR,
+    });
+  }
+
+  async notifySystem(
+    userId: string,
+    payload: { title: string; message: string; type?: NotificationType },
+  ) {
+    return this.create({
+      userId,
+      title: payload.title,
+      message: payload.message,
+      type: payload.type ?? NotificationType.INFO,
+      category: NotificationCategory.SYSTEM,
+    });
   }
 
   async findAll() {
     return this.prisma.notification.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async findAllByUser(userId: string) {
+    return this.prisma.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -78,7 +147,17 @@ export class NotificationsService {
       where: {
         isRead: false,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async findUnreadByUser(userId: string) {
+    return this.prisma.notification.findMany({
+      where: {
+        userId,
+        isRead: false,
+      },
+      orderBy: { createdAt: "desc" },
     });
   }
 
