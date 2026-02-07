@@ -5,10 +5,15 @@ import {
   ForbiddenException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { NotificationType } from "../notifications/dto/create-notification.dto";
 
 @Injectable()
 export class VendorBuyerConnectionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async connectBuyerToVendor(buyerId: string, vendorCode: string) {
     // Find vendor by code
@@ -40,7 +45,7 @@ export class VendorBuyerConnectionsService {
         throw new BadRequestException("Already connected to this vendor");
       }
       // Reactivate connection
-      return this.prisma.vendorBuyerConnection.update({
+      const reactivated = await this.prisma.vendorBuyerConnection.update({
         where: { id: existingConnection.id },
         data: { isActive: true, connectedAt: new Date() },
         include: {
@@ -49,14 +54,35 @@ export class VendorBuyerConnectionsService {
               id: true,
               vendorCode: true,
               businessName: true,
+              userId: true,
+            },
+          },
+          buyer: {
+            select: {
+              id: true,
+              fulllName: true,
+              userId: true,
             },
           },
         },
       });
+
+      if (reactivated.vendor?.userId && reactivated.buyer?.fulllName) {
+        await this.notificationsService.notifyVendor(
+          reactivated.vendor.userId,
+          {
+            title: "Buyer reconnected",
+            message: `${reactivated.buyer.fulllName} reconnected to your store.`,
+            type: NotificationType.INFO,
+          },
+        );
+      }
+
+      return reactivated;
     }
 
     // Create new connection
-    return this.prisma.vendorBuyerConnection.create({
+    const connection = await this.prisma.vendorBuyerConnection.create({
       data: {
         vendorId: vendor.id,
         buyerId,
@@ -67,10 +93,28 @@ export class VendorBuyerConnectionsService {
             id: true,
             vendorCode: true,
             businessName: true,
+            userId: true,
+          },
+        },
+        buyer: {
+          select: {
+            id: true,
+            fulllName: true,
+            userId: true,
           },
         },
       },
     });
+
+    if (connection.vendor?.userId && connection.buyer?.fulllName) {
+      await this.notificationsService.notifyVendor(connection.vendor.userId, {
+        title: "New buyer connection",
+        message: `${connection.buyer.fulllName} connected to your store.`,
+        type: NotificationType.SUCCESS,
+      });
+    }
+
+    return connection;
   }
 
   async getBuyerConnections(buyerId: string) {

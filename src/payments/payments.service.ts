@@ -8,6 +8,8 @@ import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreatePaymentDto } from "./dto/create-payment.dto";
 import Stripe from "stripe";
+import { NotificationsService } from "../notifications/notifications.service";
+import { NotificationType } from "../notifications/dto/create-notification.dto";
 
 @Injectable()
 export class PaymentsService {
@@ -16,6 +18,7 @@ export class PaymentsService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
+    private notificationsService: NotificationsService,
   ) {
     const stripeSecretKey = this.configService.get<string>(
       "STRIPE_SECRET_KEY",
@@ -168,7 +171,12 @@ export class PaymentsService {
     const payment = await this.prisma.payment.findUnique({
       where: { orderId },
       include: {
-        order: true,
+        order: {
+          include: {
+            buyer: true,
+            vendor: true,
+          },
+        },
       },
     });
 
@@ -193,6 +201,22 @@ export class PaymentsService {
         status: "processing",
       },
     });
+
+    if (payment.order?.buyer?.userId) {
+      await this.notificationsService.notifyBuyer(payment.order.buyer.userId, {
+        title: "Payment succeeded",
+        message: `Payment received for order ${payment.order.orderNumber}.`,
+        type: NotificationType.SUCCESS,
+      });
+    }
+
+    if (payment.order?.vendor?.userId) {
+      await this.notificationsService.notifyVendor(payment.order.vendor.userId, {
+        title: "Payment received",
+        message: `Payment received for order ${payment.order.orderNumber}.`,
+        type: NotificationType.SUCCESS,
+      });
+    }
 
     console.log(`Payment succeeded for order: ${orderId}`);
   }

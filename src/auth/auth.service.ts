@@ -31,6 +31,8 @@ import { GetAllUsersQueryDto } from "./dto/getall.query.dto";
 import { GetAllVendorsQueryDto, VendorSortBy } from "./dto/getAllVendors";
 import { OrderStatus } from "src/orders/dto/update-order-status.dto";
 import { UpdateVendorDto } from "./dto/update-vendor.dto";
+import { NotificationsService } from "../notifications/notifications.service";
+import { NotificationType } from "../notifications/dto/create-notification.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 
 @Injectable()
@@ -41,6 +43,7 @@ export class AuthService {
     private readonly cloudinaryService: CloudinaryService,
     private readonly emailService: EmailService,
     private configService: ConfigService,
+    private notificationsService: NotificationsService,
   ) {
     // Clean up expired OTPs every hour
     setInterval(() => this.cleanupExpiredOtps(), 60 * 60 * 1000);
@@ -146,6 +149,12 @@ export class AuthService {
         });
         return r;
       });
+
+      await this.notificationsService.notifyBuyer(userId, {
+        title: "Profile created",
+        message: "Your buyer profile has been created successfully.",
+        type: NotificationType.SUCCESS,
+      });
     } catch (error) {
       throw new BadRequestException(
         `Failed to register buyer: ${error.message}`,
@@ -238,6 +247,12 @@ export class AuthService {
           vendorCode: vendor.vendorCode,
           message: "Vendor registered successfully",
         };
+      });
+
+      await this.notificationsService.notifyVendor(userId, {
+        title: "Profile created",
+        message: "Your vendor profile has been created successfully.",
+        type: NotificationType.SUCCESS,
       });
     } catch (error) {
       throw new BadRequestException(
@@ -711,6 +726,32 @@ export class AuthService {
         },
       },
     });
+
+    const wasApproved = vendor.isNidVerify && vendor.isBussinessIdVerified;
+    const isApproved =
+      updatedVendor.isNidVerify && updatedVendor.isBussinessIdVerified;
+
+    if (!wasApproved && isApproved && updatedVendor.userId) {
+      await this.notificationsService.notifyVendor(updatedVendor.userId, {
+        title: "KYC approved",
+        message: "Your vendor KYC verification has been approved.",
+        type: NotificationType.SUCCESS,
+      });
+    }
+
+    if (
+      !isApproved &&
+      (updateDto.isNidVerify === false ||
+        updateDto.isBussinessIdVerified === false) &&
+      updatedVendor.userId
+    ) {
+      await this.notificationsService.notifyVendor(updatedVendor.userId, {
+        title: "KYC rejected",
+        message:
+          "Your vendor KYC verification was rejected. Please resubmit your documents.",
+        type: NotificationType.ERROR,
+      });
+    }
 
     return {
       success: true,

@@ -22,6 +22,8 @@ import { NotificationsService } from "./notifications.service";
 import { CreateNotificationDto } from "./dto/create-notification.dto";
 import { AdminAuthGuard } from "../auth/guards/admin-auth.guard";
 import { BroadcastNotificationDto } from "./dto/broadcast-notification.dto";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { GetUser } from "../auth/decorators/get-user.decorator";
 
 @ApiTags("Notifications")
 @ApiBearerAuth()
@@ -31,6 +33,7 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Post()
+  @UseGuards(AdminAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: "Create a notification",
@@ -48,6 +51,7 @@ export class NotificationsController {
   }
 
   @Post("broadcast")
+  @UseGuards(AdminAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: "Broadcast a notification",
@@ -63,6 +67,7 @@ export class NotificationsController {
   }
 
   @Get()
+  @UseGuards(AdminAuthGuard)
   @ApiOperation({
     summary: "Get all notifications",
     description: "Get all notifications (admin view)",
@@ -72,11 +77,11 @@ export class NotificationsController {
     description: "Notifications retrieved successfully",
   })
   async findAll() {
-    console.log("Testing 12.21AM");
     return this.notificationsService.findAll();
   }
 
   @Get("broadcasts")
+  @UseGuards(AdminAuthGuard)
   @ApiOperation({
     summary: "Get broadcasts",
     description: "Get grouped broadcast notifications (admin view)",
@@ -90,6 +95,7 @@ export class NotificationsController {
   }
 
   @Get("broadcasts/:broadcastId/recipients")
+  @UseGuards(AdminAuthGuard)
   @ApiOperation({
     summary: "Get broadcast recipients",
     description: "Get notifications for a specific broadcast",
@@ -108,6 +114,7 @@ export class NotificationsController {
   }
 
   @Get("unread")
+  @UseGuards(AdminAuthGuard)
   @ApiOperation({
     summary: "Get unread notifications",
     description: "Get all unread notifications (admin view)",
@@ -120,7 +127,36 @@ export class NotificationsController {
     return this.notificationsService.findUnread();
   }
 
+  @Get("me")
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: "Get my notifications",
+    description: "Get notifications for the authenticated user",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Notifications retrieved successfully",
+  })
+  async findMyNotifications(@GetUser() user: any) {
+    return this.notificationsService.findAllByUser(user.id);
+  }
+
+  @Get("me/unread")
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: "Get my unread notifications",
+    description: "Get unread notifications for the authenticated user",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Unread notifications retrieved successfully",
+  })
+  async findMyUnreadNotifications(@GetUser() user: any) {
+    return this.notificationsService.findUnreadByUser(user.id);
+  }
+
   @Patch(":id/read")
+  @UseGuards(AdminAuthGuard)
   @ApiOperation({
     summary: "Mark notification as read",
     description: "Mark a specific notification as read",
@@ -140,6 +176,7 @@ export class NotificationsController {
   }
 
   @Patch("read-all")
+  @UseGuards(AdminAuthGuard)
   @ApiOperation({
     summary: "Mark all notifications as read",
     description: "Mark all notifications as read (admin view)",
@@ -153,7 +190,43 @@ export class NotificationsController {
     return this.notificationsService.markAllAsRead();
   }
 
+  @Patch("me/:id/read")
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: "Mark my notification as read",
+    description: "Mark a specific notification as read for the user",
+  })
+  @ApiParam({
+    name: "id",
+    description: "Notification ID",
+    example: "uuid-here",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Notification marked as read successfully",
+  })
+  @ApiResponse({ status: 404, description: "Notification not found" })
+  async markMyNotificationRead(@Param("id") id: string, @GetUser() user: any) {
+    return this.notificationsService.markAsRead(id, user.id);
+  }
+
+  @Patch("me/read-all")
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: "Mark all my notifications as read",
+    description: "Mark all notifications as read for the authenticated user",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "All notifications marked as read successfully",
+    schema: { example: { count: 5 } },
+  })
+  async markAllMyNotificationsRead(@GetUser() user: any) {
+    return this.notificationsService.markAllAsRead(user.id);
+  }
+
   @Delete(":id")
+  @UseGuards(AdminAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: "Delete notification",
@@ -171,5 +244,26 @@ export class NotificationsController {
   @ApiResponse({ status: 404, description: "Notification not found" })
   async delete(@Param("id") id: string) {
     return this.notificationsService.delete(id);
+  }
+
+  @Delete("me/:id")
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Delete my notification",
+    description: "Delete a specific notification for the authenticated user",
+  })
+  @ApiParam({
+    name: "id",
+    description: "Notification ID",
+    example: "uuid-here",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Notification deleted successfully",
+  })
+  @ApiResponse({ status: 404, description: "Notification not found" })
+  async deleteMyNotification(@Param("id") id: string, @GetUser() user: any) {
+    return this.notificationsService.delete(id, user.id);
   }
 }
