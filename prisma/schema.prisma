@@ -335,12 +335,31 @@ model Notification {
   userId    String
   title     String
   message   String
+  type      NotificationType     @default(info)
+  category  NotificationCategory @default(system)
+  broadcastId String?
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([broadcastId])
+  @@unique([broadcastId, userId])
+}
+
+enum NotificationType {
+  info
+  success
+  warning
+  error
+}
+
+enum NotificationCategory {
+  system
+  buyer
+  vendor
+  broadcast
 }
 
 enum AdminRole {
@@ -507,30 +526,3 @@ model ActivityLog {
 
   createdAt DateTime @default(now())
 }
-
-// Update existing models to add relations
-// model Product {
-//   // ... existing fields
-//   reviews       ProductReview[]
-//   averageRating Float?          @default(0)
-//   totalReviews  Int             @default(0)
-// }
-
-// model Vendor {
-//   // ... existing fields
-//   vendorReviews VendorReview[]
-//   averageRating Float?         @default(0)
-//   totalReviews  Int            @default(0)
-// }
-
-// model Buyer {
-//   // ... existing fields
-//   productReviews ProductReview[]
-//   vendorReviews  VendorReview[]
-// }
-
-// model Order {
-//   // ... existing fields
-//   productReviews ProductReview[]
-//   vendorReviews  VendorReview[]
-// }

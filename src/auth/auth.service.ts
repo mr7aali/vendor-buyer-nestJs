@@ -2273,7 +2273,7 @@ export class AuthService {
       maxRating,
       businessName,
     } = query;
-    console.log(isActive, "isActive ===========> isActive");
+
     const skip = (page - 1) * limit;
     const take = limit;
 
