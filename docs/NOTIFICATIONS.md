@@ -148,7 +148,7 @@ Each connected user joins a room:
 
 Notifications are emitted to that room.
 
-### Frontend Socket.IO Example
+### Frontend Socket.IO Example (Web)
 
 ```ts
 import { io } from "socket.io-client";
@@ -170,6 +170,43 @@ socket.on("notification", (payload) => {
 ```
 
 **Token requirement:** same JWT access token used for REST calls.
+
+### React Native Socket.IO Example
+
+```ts
+import { io } from "socket.io-client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const connectNotificationsSocket = async () => {
+  const token = await AsyncStorage.getItem("accessToken");
+
+  const socket = io("http://localhost:3000", {
+    transports: ["websocket"],
+    auth: { token },
+  });
+
+  socket.on("connect", () => {
+    console.log("connected", socket.id);
+  });
+
+  socket.on("notification", (payload) => {
+    console.log("new notification", payload);
+    // update store / show local notification
+  });
+
+  socket.on("disconnect", () => {
+    console.log("disconnected");
+  });
+
+  return socket;
+};
+```
+
+Notes for React Native:
+
+- Use `transports: ["websocket"]` to avoid long‑polling issues on mobile.
+- Store tokens in `AsyncStorage`.
+- Reconnect on app resume if the socket is disconnected.
 
 ---
 
@@ -193,4 +230,3 @@ socket.on("notification", (payload) => {
   - `notificationsService.notifyVendor(...)`
   - `notificationsService.notifySystem(...)`
 - Admin notifications can be split into their own model later if needed.
-
