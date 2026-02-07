@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { randomUUID } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   CreateNotificationDto,
@@ -49,6 +50,8 @@ export class NotificationsService {
           ? NotificationCategory.VENDOR
           : NotificationCategory.BROADCAST;
 
+    const broadcastId = dto.idempotencyKey ?? randomUUID();
+
     const result = await this.prisma.notification.createMany({
       data: users.map((user) => ({
         userId: user.id,
@@ -56,7 +59,9 @@ export class NotificationsService {
         message: dto.message,
         type: dto.type ?? "info",
         category,
+        broadcastId,
       })),
+      skipDuplicates: true,
     });
 
     return { count: result.count };
@@ -74,6 +79,42 @@ export class NotificationsService {
         isRead: false,
       },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async listBroadcasts() {
+    return this.prisma.$queryRaw<
+      Array<{
+        broadcastId: string;
+        title: string;
+        message: string;
+        type: string;
+        category: string;
+        createdAt: Date;
+        recipients: number;
+        readCount: number;
+      }>
+    >`
+      SELECT
+        "broadcastId",
+        MIN("title") as "title",
+        MIN("message") as "message",
+        MIN("type") as "type",
+        MIN("category") as "category",
+        MIN("createdAt") as "createdAt",
+        COUNT(*)::int as "recipients",
+        SUM(CASE WHEN "isRead" THEN 1 ELSE 0 END)::int as "readCount"
+      FROM "Notification"
+      WHERE "broadcastId" IS NOT NULL
+      GROUP BY "broadcastId"
+      ORDER BY MIN("createdAt") DESC
+    `;
+  }
+
+  async listBroadcastRecipients(broadcastId: string) {
+    return this.prisma.notification.findMany({
+      where: { broadcastId },
+      orderBy: { createdAt: "desc" },
     });
   }
 

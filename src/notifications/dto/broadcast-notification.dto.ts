@@ -10,6 +10,16 @@ export enum BroadcastTarget {
 
 export class BroadcastNotificationDto {
   @ApiProperty({
+    description:
+      "Optional idempotency key to prevent duplicate broadcasts on retries",
+    example: "e4f7b0aa-8a39-4a9b-9c4b-9f3c7f7a0f1e",
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  idempotencyKey?: string;
+
+  @ApiProperty({
     description: "Target audience for the broadcast",
     enum: BroadcastTarget,
     example: BroadcastTarget.ALL,

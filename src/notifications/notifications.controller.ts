@@ -76,6 +76,37 @@ export class NotificationsController {
     return this.notificationsService.findAll();
   }
 
+  @Get("broadcasts")
+  @ApiOperation({
+    summary: "Get broadcasts",
+    description: "Get grouped broadcast notifications (admin view)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Broadcasts retrieved successfully",
+  })
+  async listBroadcasts() {
+    return this.notificationsService.listBroadcasts();
+  }
+
+  @Get("broadcasts/:broadcastId/recipients")
+  @ApiOperation({
+    summary: "Get broadcast recipients",
+    description: "Get notifications for a specific broadcast",
+  })
+  @ApiParam({
+    name: "broadcastId",
+    description: "Broadcast ID",
+    example: "uuid-here",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Broadcast recipients retrieved successfully",
+  })
+  async listBroadcastRecipients(@Param("broadcastId") broadcastId: string) {
+    return this.notificationsService.listBroadcastRecipients(broadcastId);
+  }
+
   @Get("unread")
   @ApiOperation({
     summary: "Get unread notifications",
