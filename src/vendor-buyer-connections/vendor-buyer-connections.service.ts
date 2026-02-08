@@ -60,19 +60,19 @@ export class VendorBuyerConnectionsService {
           buyer: {
             select: {
               id: true,
-              fulllName: true,
+              fullName: true,
               userId: true,
             },
           },
         },
       });
 
-      if (reactivated.vendor?.userId && reactivated.buyer?.fulllName) {
+      if (reactivated.vendor?.userId && reactivated.buyer?.fullName) {
         await this.notificationsService.notifyVendor(
           reactivated.vendor.userId,
           {
             title: "Buyer reconnected",
-            message: `${reactivated.buyer.fulllName} reconnected to your store.`,
+            message: `${reactivated.buyer.fullName} reconnected to your store.`,
             type: NotificationType.INFO,
           },
         );
@@ -99,17 +99,17 @@ export class VendorBuyerConnectionsService {
         buyer: {
           select: {
             id: true,
-            fulllName: true,
+            fullName: true,
             userId: true,
           },
         },
       },
     });
 
-    if (connection.vendor?.userId && connection.buyer?.fulllName) {
+    if (connection.vendor?.userId && connection.buyer?.fullName) {
       await this.notificationsService.notifyVendor(connection.vendor.userId, {
         title: "New buyer connection",
-        message: `${connection.buyer.fulllName} connected to your store.`,
+        message: `${connection.buyer.fullName} connected to your store.`,
         type: NotificationType.SUCCESS,
       });
     }
@@ -136,7 +136,7 @@ export class VendorBuyerConnectionsService {
         buyer: {
           select: {
             id: true,
-            fulllName: true,
+            fullName: true,
             cart: true,
             userId: true,
           },

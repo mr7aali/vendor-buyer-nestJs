@@ -10,7 +10,7 @@ export class UpdateUserDto {
 export class UpdateBuyerProfileDto {
   @IsOptional()
   @IsString()
-  fulllName?: string;
+  fullName?: string;
 
   @IsOptional()
   @IsString()
@@ -40,7 +40,7 @@ export class UpdateBuyerProfileDto {
 export class UpdateVendorProfileDto {
   @IsOptional()
   @IsString()
-  fulllName?: string;
+  fullName?: string;
 
   @IsOptional()
   @IsString()

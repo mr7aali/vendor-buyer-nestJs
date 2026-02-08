@@ -42,7 +42,7 @@ model Buyer {
   id     String @id @default(uuid())
   userId String @unique
 
-  fulllName         String
+  fullName          String
   phone             String
   nidNumber         String
   nidFontPhotoUrl   String // document
@@ -68,7 +68,7 @@ model Vendor {
   id                    String  @id @default(uuid())
   userId                String  @unique
   vendorCode            String  @unique @default(dbgenerated("'VEN-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 8))"))
-  fulllName             String
+  fullName              String
   phone                 String
   address               String
   storename             String
@@ -331,21 +331,21 @@ model Message {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  userId    String
-  title     String
-  message   String
-  type      NotificationType     @default(info)
-  category  NotificationCategory @default(system)
+  id          String               @id @default(uuid())
+  userId      String
+  title       String
+  message     String
+  type        NotificationType     @default(info)
+  category    NotificationCategory @default(system)
   broadcastId String?
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isRead      Boolean              @default(false)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([broadcastId, userId])
   @@index([userId])
   @@index([broadcastId])
-  @@unique([broadcastId, userId])
 }
 
 enum NotificationType {

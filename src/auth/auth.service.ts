@@ -133,7 +133,7 @@ export class AuthService {
         const r = await prisma.buyer.create({
           data: {
             userId: userId,
-            fulllName: data.fullName,
+            fullName: data.fullName,
             phone: data.phone,
             nidNumber: data.nidNumber,
             nidFontPhotoUrl: nidFontUrl.secure_url,
@@ -217,7 +217,7 @@ export class AuthService {
         const vendor = await this.prisma.vendor.create({
           data: {
             userId: userId,
-            fulllName: data.fulllName,
+            fullName: data.fullName,
             phone: data.phone,
             address: data.address,
             storename: data.storename,
@@ -242,7 +242,7 @@ export class AuthService {
 
         return {
           id: vendor.id,
-          fulllName: vendor.fulllName,
+          fullName: vendor.fullName,
           storename: vendor.storename,
           vendorCode: vendor.vendorCode,
           message: "Vendor registered successfully",
@@ -567,7 +567,7 @@ export class AuthService {
     //     buyer: {
     //       select: {
     //         id: true,
-    //         fulllName: true,
+    //         fullName: true,
     //         profilePhotoUrl: true,
     //       },
     //     },
@@ -620,7 +620,7 @@ export class AuthService {
     //     buyer: {
     //       select: {
     //         id: true,
-    //         fulllName: true,
+    //         fullName: true,
     //         phone: true,
     //         profilePhotoUrl: true,
     //       },
@@ -638,7 +638,7 @@ export class AuthService {
       // id: vendor.id,
       // userId: vendor.userId,
       // vendorCode: vendor.vendorCode,
-      // fulllName: vendor.fulllName,
+      // fullName: vendor.fullName,
       // phone: vendor.phone,
       // address: vendor.address,
       // storename: vendor.storename,
@@ -763,7 +763,7 @@ export class AuthService {
   async updateBuyer(
     id: string,
     updateDto: {
-      fulllName?: string;
+      fullName?: string;
       phone?: string;
       nidNumber?: string;
       gender?: string;
@@ -1107,7 +1107,7 @@ export class AuthService {
       select: {
         id: true,
         userId: true,
-        fulllName: true,
+        fullName: true,
         phone: true,
         nidNumber: true,
         nidFontPhotoUrl: true,
@@ -1138,7 +1138,7 @@ export class AuthService {
         id: true,
         userId: true,
         vendorCode: true,
-        fulllName: true,
+        fullName: true,
         phone: true,
         address: true,
         storename: true,
@@ -2065,12 +2065,12 @@ export class AuthService {
         { email: { contains: search, mode: "insensitive" } },
         {
           buyer: {
-            fulllName: { contains: search, mode: "insensitive" },
+            fullName: { contains: search, mode: "insensitive" },
           },
         },
         {
           vendor: {
-            fulllName: { contains: search, mode: "insensitive" },
+            fullName: { contains: search, mode: "insensitive" },
           },
         },
       ];
@@ -2098,7 +2098,7 @@ export class AuthService {
         select: {
           id: true,
           userId: true,
-          fulllName: true,
+          fullName: true,
           phone: true,
           nidNumber: true,
           // nidFontPhotoUrl: true,
@@ -2129,7 +2129,7 @@ export class AuthService {
           id: true,
           userId: true,
           vendorCode: true,
-          fulllName: true,
+          fullName: true,
           phone: true,
           address: true,
           storename: true,
@@ -2323,7 +2323,7 @@ export class AuthService {
 
     if (search) {
       where.OR = [
-        { fulllName: { contains: search, mode: "insensitive" } },
+        { fullName: { contains: search, mode: "insensitive" } },
         { storename: { contains: search, mode: "insensitive" } },
         { businessName: { contains: search, mode: "insensitive" } },
         { phone: { contains: search, mode: "insensitive" } },
@@ -2416,7 +2416,7 @@ export class AuthService {
         id: vendorData.id,
         userId: vendorData.userId,
         vendorCode: vendorData.vendorCode,
-        fulllName: vendorData.fulllName,
+        fullName: vendorData.fullName,
         phone: vendorData.phone,
         address: vendorData.address,
         storename: vendorData.storename,
@@ -2475,8 +2475,8 @@ export class AuthService {
           bValue = b.totalOrders;
           break;
         case VendorSortBy.FULL_NAME:
-          aValue = a.fulllName;
-          bValue = b.fulllName;
+          aValue = a.fullName;
+          bValue = b.fullName;
           break;
         case VendorSortBy.STORE_NAME:
           aValue = a.storename;

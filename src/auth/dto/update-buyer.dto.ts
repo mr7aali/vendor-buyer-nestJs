@@ -3,7 +3,7 @@ import { IsString, IsOptional, IsBoolean } from "class-validator";
 export class UpdateBuyerDto {
   @IsOptional()
   @IsString()
-  fulllName?: string;
+  fullName?: string;
 
   @IsOptional()
   @IsString()

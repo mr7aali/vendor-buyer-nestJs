@@ -1,0 +1,3760 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/": {
+      "get": {
+        "description": "Simple health check endpoint to verify API is running",
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "API is running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": "Hello World!"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Health check",
+        "tags": ["App"]
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "AuthController_registerUser",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/users/{id}": {
+      "get": {
+        "operationId": "AuthController_getUserByIdForAdmin",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/register/vendor": {
+      "post": {
+        "operationId": "AuthController_registerVendor",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VendorRegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/vendor/{id}": {
+      "get": {
+        "operationId": "AuthController_getVendorById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      },
+      "patch": {
+        "operationId": "AuthController_updateVendor",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVendorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/buyer/{id}": {
+      "patch": {
+        "operationId": "AuthController_updateBuyer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBuyerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/register/buyer": {
+      "post": {
+        "operationId": "AuthController_registerBuyer",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuyerRegisterFullDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/login": {
+      "post": {
+        "operationId": "AuthController_adminLogin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminLoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/me": {
+      "get": {
+        "operationId": "AuthController_getAdminProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin-profile-update": {
+      "patch": {
+        "operationId": "AuthController_updateAdminProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/change-admin-password": {
+      "patch": {
+        "operationId": "AuthController_changeAdminPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeAdminPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/pending-buyers": {
+      "get": {
+        "operationId": "AuthController_getPendingBuyers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/pending-vendors": {
+      "get": {
+        "operationId": "AuthController_getPendingVendors",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/bootstrap": {
+      "post": {
+        "operationId": "AuthController_bootstrapSuperAdmin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSuperAdminDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/employee": {
+      "post": {
+        "operationId": "AuthController_createEmployee",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEmployeeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/employees": {
+      "get": {
+        "operationId": "AuthController_getAllEmployees",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/employee/{employeeId}": {
+      "get": {
+        "operationId": "AuthController_getEmployee",
+        "parameters": [
+          {
+            "name": "employeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      },
+      "delete": {
+        "operationId": "AuthController_deleteEmployee",
+        "parameters": [
+          {
+            "name": "employeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/employee/{employeeId}/permissions": {
+      "patch": {
+        "operationId": "AuthController_updateEmployeePermissions",
+        "parameters": [
+          {
+            "name": "employeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmployeePermissionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/permissions": {
+      "get": {
+        "operationId": "AuthController_getAllPermissions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/permissions/seed": {
+      "post": {
+        "operationId": "AuthController_seedPermissions",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/dashboard": {
+      "get": {
+        "operationId": "AuthController_getDashboard",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/users": {
+      "get": {
+        "operationId": "AuthController_getUsersPage",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/products": {
+      "get": {
+        "operationId": "AuthController_getProductsPage",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/orders": {
+      "get": {
+        "operationId": "AuthController_getOrdersPage",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin/reports": {
+      "get": {
+        "operationId": "AuthController_getReportsPage",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "operationId": "AuthController_forgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/verify-otp": {
+      "post": {
+        "operationId": "AuthController_verifyOtp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOtpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "operationId": "AuthController_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "AuthController_getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      },
+      "patch": {
+        "operationId": "AuthController_updateProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/all-buyer": {
+      "get": {
+        "operationId": "AuthController_getAllBuyer",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/user": {
+      "get": {
+        "operationId": "AuthController_getAlluser",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/admin": {
+      "get": {
+        "operationId": "AuthController_getAllAdminUser",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/all-vendor": {
+      "get": {
+        "operationId": "AuthController_getAllVendors",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/notifications": {
+      "post": {
+        "description": "Create a new notification for a user (typically used by system)",
+        "operationId": "NotificationsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNotificationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Notification created successfully"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a notification",
+        "tags": ["Notifications"]
+      },
+      "get": {
+        "description": "Get all notifications (admin view)",
+        "operationId": "NotificationsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Notifications retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all notifications",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/broadcast": {
+      "post": {
+        "description": "Send a notification to all users or a specific user group",
+        "operationId": "NotificationsController_broadcast",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BroadcastNotificationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Broadcast notifications created successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Broadcast a notification",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/broadcasts": {
+      "get": {
+        "description": "Get grouped broadcast notifications (admin view)",
+        "operationId": "NotificationsController_listBroadcasts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Broadcasts retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get broadcasts",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/broadcasts/{broadcastId}/recipients": {
+      "get": {
+        "description": "Get notifications for a specific broadcast",
+        "operationId": "NotificationsController_listBroadcastRecipients",
+        "parameters": [
+          {
+            "name": "broadcastId",
+            "required": true,
+            "in": "path",
+            "description": "Broadcast ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Broadcast recipients retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get broadcast recipients",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/unread": {
+      "get": {
+        "description": "Get all unread notifications (admin view)",
+        "operationId": "NotificationsController_findUnread",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Unread notifications retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get unread notifications",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/me": {
+      "get": {
+        "description": "Get notifications for the authenticated user",
+        "operationId": "NotificationsController_findMyNotifications",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Notifications retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get my notifications",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/me/unread": {
+      "get": {
+        "description": "Get unread notifications for the authenticated user",
+        "operationId": "NotificationsController_findMyUnreadNotifications",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Unread notifications retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get my unread notifications",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "description": "Mark a specific notification as read",
+        "operationId": "NotificationsController_markAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Notification ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification marked as read successfully"
+          },
+          "404": {
+            "description": "Notification not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark notification as read",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/read-all": {
+      "patch": {
+        "description": "Mark all notifications as read (admin view)",
+        "operationId": "NotificationsController_markAllAsRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All notifications marked as read successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "count": 5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark all notifications as read",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/me/{id}/read": {
+      "patch": {
+        "description": "Mark a specific notification as read for the user",
+        "operationId": "NotificationsController_markMyNotificationRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Notification ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification marked as read successfully"
+          },
+          "404": {
+            "description": "Notification not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark my notification as read",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/me/read-all": {
+      "patch": {
+        "description": "Mark all notifications as read for the authenticated user",
+        "operationId": "NotificationsController_markAllMyNotificationsRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All notifications marked as read successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "count": 5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark all my notifications as read",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/{id}": {
+      "delete": {
+        "description": "Delete a specific notification",
+        "operationId": "NotificationsController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Notification ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification deleted successfully"
+          },
+          "404": {
+            "description": "Notification not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete notification",
+        "tags": ["Notifications"]
+      }
+    },
+    "/notifications/me/{id}": {
+      "delete": {
+        "description": "Delete a specific notification for the authenticated user",
+        "operationId": "NotificationsController_deleteMyNotification",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Notification ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification deleted successfully"
+          },
+          "404": {
+            "description": "Notification not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete my notification",
+        "tags": ["Notifications"]
+      }
+    },
+    "/connections/connect": {
+      "post": {
+        "operationId": "VendorBuyerConnectionsController_connectToVendor",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectVendorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["VendorBuyerConnections"]
+      }
+    },
+    "/connections": {
+      "get": {
+        "operationId": "VendorBuyerConnectionsController_getMyConnections",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["VendorBuyerConnections"]
+      }
+    },
+    "/connections/qr/{vendorId}": {
+      "get": {
+        "operationId": "VendorBuyerConnectionsController_generateQr",
+        "parameters": [
+          {
+            "name": "vendorId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["VendorBuyerConnections"]
+      }
+    },
+    "/connections/disconnect/{vendorId}": {
+      "delete": {
+        "operationId": "VendorBuyerConnectionsController_disconnectFromVendor",
+        "parameters": [
+          {
+            "name": "vendorId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["VendorBuyerConnections"]
+      }
+    },
+    "/categories": {
+      "post": {
+        "operationId": "CategoriesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Categories"]
+      }
+    },
+    "/categories/vendor/{vendorId}": {
+      "get": {
+        "operationId": "CategoriesController_findAllForVendor",
+        "parameters": [
+          {
+            "name": "vendorId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Categories"]
+      }
+    },
+    "/categories/all": {
+      "get": {
+        "operationId": "CategoriesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Categories"]
+      }
+    },
+    "/categories/{id}": {
+      "get": {
+        "operationId": "CategoriesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Categories"]
+      },
+      "patch": {
+        "operationId": "CategoriesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Categories"]
+      },
+      "delete": {
+        "operationId": "CategoriesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Categories"]
+      }
+    },
+    "/products": {
+      "post": {
+        "operationId": "ProductsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Products"]
+      },
+      "get": {
+        "operationId": "ProductsController_getAllProductForTest",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Products"]
+      }
+    },
+    "/products/specification/create": {
+      "post": {
+        "operationId": "ProductsController_specificationCreate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSpecificatonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Products"]
+      }
+    },
+    "/products/vendor/{vendorId}": {
+      "get": {
+        "operationId": "ProductsController_findAllForVendor",
+        "parameters": [
+          {
+            "name": "vendorId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Products"]
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "operationId": "ProductsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Products"]
+      },
+      "patch": {
+        "operationId": "ProductsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Products"]
+      },
+      "delete": {
+        "operationId": "ProductsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Products"]
+      }
+    },
+    "/cart": {
+      "get": {
+        "operationId": "CartController_getCart",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Cart"]
+      }
+    },
+    "/cart/add": {
+      "post": {
+        "operationId": "CartController_addToCart",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddToCartDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Cart"]
+      }
+    },
+    "/cart/items/{itemId}": {
+      "patch": {
+        "description": "Buyer only: Update the quantity of an item in the cart",
+        "operationId": "CartController_updateCartItem",
+        "parameters": [
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "description": "Cart item ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCartItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cart item updated successfully"
+          },
+          "400": {
+            "description": "Bad request - Insufficient stock"
+          },
+          "403": {
+            "description": "Forbidden - Buyer access required"
+          },
+          "404": {
+            "description": "Cart item or buyer not found"
+          }
+        },
+        "summary": "Update cart item quantity",
+        "tags": ["Cart"]
+      },
+      "delete": {
+        "description": "Buyer only: Remove an item from the cart",
+        "operationId": "CartController_removeFromCart",
+        "parameters": [
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "description": "Cart item ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item removed from cart successfully"
+          },
+          "403": {
+            "description": "Forbidden - Buyer access required"
+          },
+          "404": {
+            "description": "Cart item or buyer not found"
+          }
+        },
+        "summary": "Remove item from cart",
+        "tags": ["Cart"]
+      }
+    },
+    "/cart/clear": {
+      "delete": {
+        "description": "Buyer only: Remove all items from the cart",
+        "operationId": "CartController_clearCart",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Cart cleared successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "message": "Cart cleared successfully"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Buyer access required"
+          },
+          "404": {
+            "description": "Buyer profile not found"
+          }
+        },
+        "summary": "Clear cart",
+        "tags": ["Cart"]
+      }
+    },
+    "/orders": {
+      "post": {
+        "description": "Buyer only: Create an order from cart items for a specific vendor. Cart must contain items from the vendor.",
+        "operationId": "OrdersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order created successfully"
+          },
+          "400": {
+            "description": "Bad request - Cart is empty or insufficient stock"
+          },
+          "403": {
+            "description": "Forbidden - Buyer not connected to vendor or buyer access required"
+          },
+          "404": {
+            "description": "Buyer not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Create an order",
+        "tags": ["Orders"]
+      },
+      "get": {
+        "description": "Get all orders - Buyers see their orders, Vendors see orders for their products",
+        "operationId": "OrdersController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Orders retrieved successfully"
+          },
+          "404": {
+            "description": "Buyer or vendor profile not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get all orders",
+        "tags": ["Orders"]
+      }
+    },
+    "/orders/get-all": {
+      "get": {
+        "description": "Get all orders with filtering, searching, and pagination",
+        "operationId": "OrdersController_findAllForAdmin",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search by order number or buyer email",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "processing",
+                "shipped",
+                "out_for_delivered",
+                "delivered",
+                "cancelled"
+              ]
+            }
+          },
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "minAmount",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "maxAmount",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": ["asc", "desc"]
+            }
+          },
+          {
+            "name": "vendorId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get all orders for admin",
+        "tags": ["Orders"]
+      }
+    },
+    "/orders/admin-order-details/{id}": {
+      "get": {
+        "description": "Get a specific order with full details for admin view",
+        "operationId": "OrdersController_orderDetailsForAdmin",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Order ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get order details for admin",
+        "tags": ["Orders"]
+      }
+    },
+    "/orders/{id}": {
+      "get": {
+        "description": "Get a specific order with all details. Buyers can only see their orders, vendors can only see orders for their products.",
+        "operationId": "OrdersController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Order ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order retrieved successfully"
+          },
+          "403": {
+            "description": "Forbidden - No access to this order"
+          },
+          "404": {
+            "description": "Order not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get order by ID",
+        "tags": ["Orders"]
+      }
+    },
+    "/orders/{id}/status": {
+      "patch": {
+        "description": "Vendor only: Update the status of an order (pending, processing, shipped, delivered, cancelled)",
+        "operationId": "OrdersController_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Order ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrderStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order status updated successfully"
+          },
+          "403": {
+            "description": "Forbidden - Vendor access required or order does not belong to vendor"
+          },
+          "404": {
+            "description": "Order or vendor not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Update order status",
+        "tags": ["Orders"]
+      }
+    },
+    "/payments/create-intent": {
+      "post": {
+        "operationId": "PaymentsController_createPaymentIntent",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Payments"]
+      }
+    },
+    "/payments/order/{orderId}": {
+      "get": {
+        "operationId": "PaymentsController_getPaymentByOrderId",
+        "parameters": [
+          {
+            "name": "orderId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Payments"]
+      }
+    },
+    "/payments/status/{sessionId}": {
+      "get": {
+        "operationId": "PaymentsController_getPaymentStatus",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Payments"]
+      }
+    },
+    "/payments/webhook": {
+      "post": {
+        "operationId": "PaymentsController_handleWebhook",
+        "parameters": [
+          {
+            "name": "stripe-signature",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Payments"]
+      }
+    },
+    "/payments": {
+      "get": {
+        "operationId": "PaymentsController_getAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Payments"]
+      },
+      "delete": {
+        "operationId": "PaymentsController_deleteAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Payments"]
+      }
+    },
+    "/coupons": {
+      "post": {
+        "description": "Vendor only: Create a new discount coupon",
+        "operationId": "CouponsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCouponDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Coupon created successfully"
+          },
+          "400": {
+            "description": "Bad request - Coupon code already exists for vendor"
+          },
+          "403": {
+            "description": "Forbidden - Vendor access required"
+          },
+          "404": {
+            "description": "Vendor not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Create a coupon",
+        "tags": ["Coupons"]
+      },
+      "get": {
+        "description": "Get coupons - Vendors see their coupons, Buyers see coupons assigned to them (optionally filtered by vendor)",
+        "operationId": "CouponsController_findAll",
+        "parameters": [
+          {
+            "name": "vendorId",
+            "required": false,
+            "in": "query",
+            "description": "Filter coupons by vendor ID (buyer only)",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Coupons retrieved successfully"
+          },
+          "404": {
+            "description": "Buyer or vendor profile not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get coupons",
+        "tags": ["Coupons"]
+      }
+    },
+    "/coupons/{id}": {
+      "get": {
+        "description": "Vendor only: Get a specific coupon with details",
+        "operationId": "CouponsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Coupon ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Coupon retrieved successfully"
+          },
+          "403": {
+            "description": "Forbidden - Vendor access required or coupon does not belong to vendor"
+          },
+          "404": {
+            "description": "Coupon or vendor not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get coupon by ID",
+        "tags": ["Coupons"]
+      }
+    },
+    "/coupons/{id}/assign": {
+      "post": {
+        "description": "Vendor only: Assign a coupon to a specific buyer. Buyer must be connected to vendor.",
+        "operationId": "CouponsController_assignToBuyer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Coupon ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignCouponDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Coupon assigned successfully"
+          },
+          "400": {
+            "description": "Bad request - Coupon already assigned or buyer not connected"
+          },
+          "403": {
+            "description": "Forbidden - Vendor access required or coupon does not belong to vendor"
+          },
+          "404": {
+            "description": "Coupon, vendor, or buyer not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Assign coupon to buyer",
+        "tags": ["Coupons"]
+      }
+    },
+    "/coupons/{id}/deactivate": {
+      "patch": {
+        "description": "Vendor only: Deactivate a coupon to prevent further usage",
+        "operationId": "CouponsController_deactivate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Coupon ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Coupon deactivated successfully"
+          },
+          "403": {
+            "description": "Forbidden - Vendor access required or coupon does not belong to vendor"
+          },
+          "404": {
+            "description": "Coupon or vendor not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Deactivate coupon",
+        "tags": ["Coupons"]
+      }
+    },
+    "/messages": {
+      "post": {
+        "description": "Send a message to another user. Buyers can only message connected vendors and vice versa.",
+        "operationId": "MessagesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Message sent successfully"
+          },
+          "400": {
+            "description": "Bad request - Invalid vendor-buyer relationship"
+          },
+          "403": {
+            "description": "Forbidden - Users must be connected to message each other"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Send a message",
+        "tags": ["Messages"]
+      }
+    },
+    "/messages/conversations": {
+      "get": {
+        "description": "Get all conversations with last message and unread count",
+        "operationId": "MessagesController_getConversations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Conversations retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get all conversations",
+        "tags": ["Messages"]
+      }
+    },
+    "/messages/conversation/{partnerId}": {
+      "get": {
+        "description": "Get all messages in a conversation with a specific user",
+        "operationId": "MessagesController_getMessages",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": true,
+            "in": "path",
+            "description": "Partner user ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get messages with a partner",
+        "tags": ["Messages"]
+      }
+    },
+    "/messages/{id}/read": {
+      "patch": {
+        "description": "Mark a specific message as read",
+        "operationId": "MessagesController_markAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Message ID",
+            "schema": {
+              "example": "uuid-here",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message marked as read successfully"
+          },
+          "403": {
+            "description": "Forbidden - Can only mark own messages as read"
+          },
+          "404": {
+            "description": "Message not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Mark message as read",
+        "tags": ["Messages"]
+      }
+    },
+    "/reviews/product": {
+      "post": {
+        "operationId": "ReviewController_createProductReview",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProductReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Review"]
+      }
+    },
+    "/reviews/product/{productId}": {
+      "get": {
+        "operationId": "ReviewController_getProductReviews",
+        "parameters": [
+          {
+            "name": "productId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Review"]
+      }
+    },
+    "/reviews/product/{reviewId}": {
+      "patch": {
+        "operationId": "ReviewController_updateProductReview",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProductReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Review"]
+      },
+      "delete": {
+        "operationId": "ReviewController_deleteProductReview",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Review"]
+      }
+    },
+    "/reviews/vendor": {
+      "post": {
+        "operationId": "ReviewController_createVendorReview",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVendorReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Review"]
+      }
+    },
+    "/reviews/vendor/{vendorId}": {
+      "get": {
+        "operationId": "ReviewController_getVendorReviews",
+        "parameters": [
+          {
+            "name": "vendorId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Review"]
+      }
+    },
+    "/reviews/vendor/{reviewId}": {
+      "patch": {
+        "operationId": "ReviewController_updateVendorReview",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVendorReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Review"]
+      },
+      "delete": {
+        "operationId": "ReviewController_deleteVendorReview",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Review"]
+      }
+    },
+    "/reviews/buyer/products": {
+      "get": {
+        "operationId": "ReviewController_getBuyerProductReviews",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Review"]
+      }
+    },
+    "/reviews/buyer/vendors": {
+      "get": {
+        "operationId": "ReviewController_getBuyerVendorReviews",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Review"]
+      }
+    },
+    "/admin/dashboard/overview": {
+      "get": {
+        "operationId": "AdminDashboardController_getDashboardOverview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Dashboard overview retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardQueryClsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get complete dashboard overview",
+        "tags": ["Admin Dashboard"]
+      }
+    },
+    "/admin/dashboard/kpi-metrics": {
+      "get": {
+        "operationId": "AdminDashboardController_getKPIMetrics",
+        "parameters": [
+          {
+            "name": "days",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "KPI metrics retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KPIMetricsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get KPI metrics",
+        "tags": ["Admin Dashboard"]
+      }
+    },
+    "/admin/dashboard/system-health": {
+      "get": {
+        "operationId": "AdminDashboardController_getSystemHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "System health retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemHealthDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get system health status",
+        "tags": ["Admin Dashboard"]
+      }
+    },
+    "/admin/dashboard/order-fulfillment": {
+      "get": {
+        "operationId": "AdminDashboardController_getOrderFulfillment",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Order fulfillment stats retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderFulfillmentDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get order fulfillment statistics",
+        "tags": ["Admin Dashboard"]
+      }
+    },
+    "/admin/dashboard/support-volume": {
+      "get": {
+        "operationId": "AdminDashboardController_getSupportVolume",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Support volume retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportVolumeDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get support volume statistics",
+        "tags": ["Admin Dashboard"]
+      }
+    },
+    "/admin/dashboard/weekly-revenue": {
+      "get": {
+        "operationId": "AdminDashboardController_getWeeklyRevenue",
+        "parameters": [
+          {
+            "name": "days",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Weekly revenue data retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeeklyRevenueDataDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get weekly revenue data",
+        "tags": ["Admin Dashboard"]
+      }
+    },
+    "/admin/dashboard/weekly-users": {
+      "get": {
+        "operationId": "AdminDashboardController_getWeeklyUsers",
+        "parameters": [
+          {
+            "name": "days",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Weekly user data retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeeklyUserDataDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get weekly user growth data",
+        "tags": ["Admin Dashboard"]
+      }
+    },
+    "/admin/dashboard/recent-activity": {
+      "get": {
+        "operationId": "AdminDashboardController_getRecentActivity",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent activity retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActivityItemDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get recent activity feed",
+        "tags": ["Admin Dashboard"]
+      }
+    },
+    "/admin/dashboard/action-items": {
+      "get": {
+        "operationId": "AdminDashboardController_getActionItems",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Action items retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActionItemDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get action items",
+        "tags": ["Admin Dashboard"]
+      }
+    },
+    "/analytics": {
+      "get": {
+        "description": "Returns revenue, user growth, order growth, and sales distribution data based on selected time range",
+        "operationId": "AnalyticsController_getAnalytics",
+        "parameters": [
+          {
+            "name": "timeRange",
+            "required": true,
+            "in": "query",
+            "description": "Time range for analytics data",
+            "schema": {
+              "default": "monthly",
+              "type": "string",
+              "enum": ["daily", "weekly", "monthly", "yearly"]
+            }
+          },
+          {
+            "name": "vendorId",
+            "required": false,
+            "in": "query",
+            "description": "Optional vendor ID to filter analytics",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns complete analytics data matching UI structure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompleteAnalyticsResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get complete analytics data for dashboard",
+        "tags": ["Analytics"]
+      }
+    },
+    "/admin-chats/admin/conversations": {
+      "get": {
+        "operationId": "ChattingWithAdminController_getAdminConversations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Conversations retrieved"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get admin chat conversations",
+        "tags": ["Admin Chats"]
+      }
+    },
+    "/admin-chats/admin/threads/{threadId}/messages": {
+      "get": {
+        "operationId": "ChattingWithAdminController_getAdminMessages",
+        "parameters": [
+          {
+            "name": "threadId",
+            "required": true,
+            "in": "path",
+            "description": "Chat thread ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages retrieved"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get messages for a chat thread (admin)",
+        "tags": ["Admin Chats"]
+      },
+      "post": {
+        "operationId": "ChattingWithAdminController_sendAdminMessage",
+        "parameters": [
+          {
+            "name": "threadId",
+            "required": true,
+            "in": "path",
+            "description": "Chat thread ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminChatMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Message sent"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Send a message as admin",
+        "tags": ["Admin Chats"]
+      }
+    },
+    "/admin-chats/admin/threads": {
+      "post": {
+        "operationId": "ChattingWithAdminController_createThread",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminChatThreadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Thread created or returned"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Create or get a chat thread (admin)",
+        "tags": ["Admin Chats"]
+      }
+    },
+    "/admin-chats/user/thread": {
+      "get": {
+        "operationId": "ChattingWithAdminController_getUserThread",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thread retrieved"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get or create user chat thread",
+        "tags": ["Admin Chats"]
+      }
+    },
+    "/admin-chats/user/messages": {
+      "get": {
+        "operationId": "ChattingWithAdminController_getUserMessages",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Messages retrieved"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get user chat messages",
+        "tags": ["Admin Chats"]
+      },
+      "post": {
+        "operationId": "ChattingWithAdminController_sendUserMessage",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserChatMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Message sent"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Send a message as buyer/vendor",
+        "tags": ["Admin Chats"]
+      }
+    }
+  },
+  "info": {
+    "title": "E-commerce Admin Dashboard API",
+    "description": "Comprehensive REST API for e-commerce platform with vendor-buyer connections, product management, shopping cart, orders, Stripe payments, coupons, messaging, and notifications. All endpoints require JWT authentication unless specified otherwise.",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "User registration and login endpoints"
+    },
+    {
+      "name": "Vendor-Buyer Connections",
+      "description": "Manage connections between vendors and buyers"
+    },
+    {
+      "name": "Categories",
+      "description": "Category management for vendors"
+    },
+    {
+      "name": "Products",
+      "description": "Product management for vendors"
+    },
+    {
+      "name": "Cart",
+      "description": "Shopping cart operations for buyers"
+    },
+    {
+      "name": "Orders",
+      "description": "Order management and tracking"
+    },
+    {
+      "name": "Payments",
+      "description": "Payment processing with Stripe"
+    },
+    {
+      "name": "Coupons",
+      "description": "Coupon and discount management"
+    },
+    {
+      "name": "Messages",
+      "description": "Vendor-buyer messaging system"
+    },
+    {
+      "name": "Notifications",
+      "description": "User notification management"
+    }
+  ],
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Development server"
+    },
+    {
+      "url": "https://api.example.com",
+      "description": "Production server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "JWT-auth": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "name": "JWT",
+        "description": "Enter JWT token",
+        "in": "header"
+      }
+    },
+    "schemas": {
+      "UserRegisterDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "VendorRegisterDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateVendorDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateBuyerDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "BuyerRegisterFullDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "User email address",
+            "example": "user@example.com",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "description": "User password",
+            "example": "password123"
+          }
+        },
+        "required": ["email", "password"]
+      },
+      "AdminLoginDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateAdminProfileDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "description": "New password (min 6 chars)"
+          },
+          "bio": {
+            "type": "string",
+            "description": "New bio (min 5 chars)"
+          }
+        }
+      },
+      "ChangeAdminPasswordDto": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string",
+            "description": "New password (min 6 chars)"
+          },
+          "confirmPassword": {
+            "type": "string"
+          }
+        },
+        "required": ["currentPassword", "newPassword", "confirmPassword"]
+      },
+      "CreateSuperAdminDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateEmployeeDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateEmployeePermissionsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ForgotPasswordDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "VerifyOtpDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "Function": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateNotificationDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User ID (UUID) to send notification to",
+            "example": "123e4567-e89b-12d3-a456-426614174000",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "Notification title",
+            "example": "Order Confirmed"
+          },
+          "message": {
+            "type": "string",
+            "description": "Notification message",
+            "example": "Your order #12345 has been confirmed."
+          },
+          "type": {
+            "type": "string",
+            "description": "Notification type",
+            "enum": ["info", "success", "warning", "error"],
+            "example": "success"
+          },
+          "category": {
+            "type": "string",
+            "description": "Notification category",
+            "enum": ["system", "buyer", "vendor", "broadcast"],
+            "example": "system"
+          }
+        },
+        "required": ["userId", "title", "message", "type"]
+      },
+      "BroadcastNotificationDto": {
+        "type": "object",
+        "properties": {
+          "idempotencyKey": {
+            "type": "string",
+            "description": "Optional idempotency key to prevent duplicate broadcasts on retries",
+            "example": "e4f7b0aa-8a39-4a9b-9c4b-9f3c7f7a0f1e"
+          },
+          "target": {
+            "type": "string",
+            "description": "Target audience for the broadcast",
+            "enum": ["all", "buyers", "vendors"],
+            "example": "all"
+          },
+          "title": {
+            "type": "string",
+            "description": "Notification title",
+            "example": "Holiday Sale"
+          },
+          "message": {
+            "type": "string",
+            "description": "Notification message",
+            "example": "Enjoy up to 40% off this weekend."
+          },
+          "type": {
+            "type": "string",
+            "description": "Notification type",
+            "enum": ["info", "success", "warning", "error"],
+            "example": "info"
+          }
+        },
+        "required": ["target", "title", "message"]
+      },
+      "ConnectVendorDto": {
+        "type": "object",
+        "properties": {
+          "vendorCode": {
+            "type": "string",
+            "description": "Vendor code (unique code provided by vendor)",
+            "example": "VENDOR123"
+          }
+        },
+        "required": ["vendorCode"]
+      },
+      "CreateCategoryDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Category name",
+            "example": "Electronics"
+          },
+          "description": {
+            "type": "string",
+            "description": "Category description",
+            "example": "Electronic devices and accessories"
+          },
+          "displayOrder": {
+            "type": "number",
+            "description": "Display order for sorting categories (lower numbers appear first)",
+            "example": 1,
+            "minimum": 0,
+            "default": 0
+          }
+        },
+        "required": ["name"]
+      },
+      "UpdateCategoryDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Category name",
+            "example": "Electronics"
+          },
+          "description": {
+            "type": "string",
+            "description": "Category description",
+            "example": "Electronic devices and accessories"
+          },
+          "displayOrder": {
+            "type": "number",
+            "description": "Display order for sorting categories",
+            "example": 1,
+            "minimum": 0
+          }
+        }
+      },
+      "CreateProductDto": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string",
+            "description": "Category ID (UUID)",
+            "example": "123e4567-e89b-12d3-a456-426614174000",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Product name",
+            "example": "Laptop Pro 15"
+          },
+          "description": {
+            "type": "string",
+            "description": "Product description",
+            "example": "High-performance laptop with 16GB RAM and 512GB SSD"
+          },
+          "price": {
+            "type": "number",
+            "description": "Product price",
+            "example": 1299.99,
+            "minimum": 0
+          },
+          "stockQuantity": {
+            "type": "number",
+            "description": "Stock quantity available",
+            "example": 50,
+            "minimum": 0
+          },
+          "imageUrl": {
+            "type": "string",
+            "description": "Product image URL",
+            "example": "https://example.com/product-image.jpg",
+            "format": "uri"
+          },
+          "isAvailable": {
+            "type": "boolean",
+            "description": "Product availability status",
+            "example": true,
+            "default": true
+          }
+        },
+        "required": ["categoryId", "name", "price", "stockQuantity"]
+      },
+      "CreateSpecificatonDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateProductDto": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string",
+            "description": "Category ID (UUID)",
+            "example": "123e4567-e89b-12d3-a456-426614174000",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Product name",
+            "example": "Laptop Pro 15"
+          },
+          "description": {
+            "type": "string",
+            "description": "Product description",
+            "example": "High-performance laptop with 16GB RAM and 512GB SSD"
+          },
+          "price": {
+            "type": "number",
+            "description": "Product price",
+            "example": 1299.99,
+            "minimum": 0
+          },
+          "stockQuantity": {
+            "type": "number",
+            "description": "Stock quantity available",
+            "example": 50,
+            "minimum": 0
+          },
+          "imageUrl": {
+            "type": "string",
+            "description": "Product image URL",
+            "example": "https://example.com/product-image.jpg",
+            "format": "uri"
+          },
+          "isAvailable": {
+            "type": "boolean",
+            "description": "Product availability status",
+            "example": true
+          }
+        }
+      },
+      "AddToCartDto": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "description": "Product ID (UUID)",
+            "example": "123e4567-e89b-12d3-a456-426614174000",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity to add to cart",
+            "example": 2,
+            "minimum": 1
+          }
+        },
+        "required": ["productId", "quantity"]
+      },
+      "UpdateCartItemDto": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "description": "New quantity for the cart item",
+            "example": 3,
+            "minimum": 1
+          }
+        },
+        "required": ["quantity"]
+      },
+      "CreateOrderDto": {
+        "type": "object",
+        "properties": {
+          "vendorId": {
+            "type": "string",
+            "description": "Vendor ID (UUID) - All items in cart from this vendor will be ordered",
+            "example": "123e4567-e89b-12d3-a456-426614174000",
+            "format": "uuid"
+          },
+          "shippingAddress": {
+            "type": "string",
+            "description": "Shipping address for the order",
+            "example": "123 Main Street, New York, NY 10001"
+          },
+          "couponCode": {
+            "type": "string",
+            "description": "Optional coupon code for discount",
+            "example": "SAVE10"
+          }
+        },
+        "required": ["vendorId", "shippingAddress"]
+      },
+      "UpdateOrderStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "New order status",
+            "enum": [
+              "pending",
+              "processing",
+              "shipped",
+              "out_for_delivered",
+              "delivered",
+              "cancelled"
+            ],
+            "example": "processing"
+          }
+        },
+        "required": ["status"]
+      },
+      "CreatePaymentDto": {
+        "type": "object",
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "description": "Order ID (UUID) to create payment for",
+            "example": "123e4567-e89b-12d3-a456-426614174000",
+            "format": "uuid"
+          }
+        },
+        "required": ["orderId"]
+      },
+      "CreateCouponDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Coupon code (must be unique per vendor)",
+            "example": "SAVE10"
+          },
+          "discountType": {
+            "type": "string",
+            "description": "Type of discount",
+            "enum": ["percentage", "fixed"],
+            "example": "percentage"
+          },
+          "discountValue": {
+            "type": "number",
+            "description": "Discount value (percentage or fixed amount)",
+            "example": 10,
+            "minimum": 0
+          },
+          "minPurchaseAmount": {
+            "type": "number",
+            "description": "Minimum purchase amount to use coupon",
+            "example": 100,
+            "minimum": 0
+          },
+          "usageLimit": {
+            "type": "number",
+            "description": "Maximum number of times coupon can be used",
+            "example": 100,
+            "minimum": 1
+          },
+          "validFrom": {
+            "type": "string",
+            "description": "Valid from date (ISO 8601)",
+            "example": "2024-01-01T00:00:00Z",
+            "format": "date-time"
+          },
+          "validUntil": {
+            "type": "string",
+            "description": "Valid until date (ISO 8601)",
+            "example": "2024-12-31T23:59:59Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "code",
+          "discountType",
+          "discountValue",
+          "validFrom",
+          "validUntil"
+        ]
+      },
+      "AssignCouponDto": {
+        "type": "object",
+        "properties": {
+          "buyerId": {
+            "type": "string",
+            "description": "Buyer ID (UUID) to assign coupon to",
+            "example": "123e4567-e89b-12d3-a456-426614174000",
+            "format": "uuid"
+          }
+        },
+        "required": ["buyerId"]
+      },
+      "CreateMessageDto": {
+        "type": "object",
+        "properties": {
+          "receiverId": {
+            "type": "string",
+            "description": "Receiver user ID (UUID)",
+            "example": "123e4567-e89b-12d3-a456-426614174000",
+            "format": "uuid"
+          },
+          "messageText": {
+            "type": "string",
+            "description": "Message text content",
+            "example": "Hello, I have a question about your products."
+          }
+        },
+        "required": ["receiverId", "messageText"]
+      },
+      "CreateProductReviewDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateProductReviewDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateVendorReviewDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateVendorReviewDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "DashboardQueryClsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "KPIMetricsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SystemHealthDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "OrderFulfillmentDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SupportVolumeDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "WeeklyRevenueDataDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "WeeklyUserDataDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ActivityItemDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ActionItemDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RevenueDataPoint": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Jan"
+          },
+          "revenue": {
+            "type": "number",
+            "example": 15000
+          },
+          "profit": {
+            "type": "number",
+            "example": 4500
+          }
+        },
+        "required": ["name", "revenue", "profit"]
+      },
+      "RevenueChartResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RevenueDataPoint"
+            }
+          },
+          "totalRevenue": {
+            "type": "number",
+            "example": 180000
+          },
+          "totalRevenueChange": {
+            "type": "number",
+            "example": 15
+          }
+        },
+        "required": ["data", "totalRevenue", "totalRevenueChange"]
+      },
+      "UserGrowthDataPoint": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Mon"
+          },
+          "buyers": {
+            "type": "number",
+            "example": 400
+          },
+          "vendors": {
+            "type": "number",
+            "example": 45
+          }
+        },
+        "required": ["name", "buyers", "vendors"]
+      },
+      "UserGrowthChartResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserGrowthDataPoint"
+            }
+          },
+          "totalUsers": {
+            "type": "number",
+            "example": 12450
+          },
+          "totalUsersChange": {
+            "type": "number",
+            "example": 24
+          }
+        },
+        "required": ["data", "totalUsers", "totalUsersChange"]
+      },
+      "OrderGrowthDataPoint": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Mon"
+          },
+          "orders": {
+            "type": "number",
+            "example": 120
+          }
+        },
+        "required": ["name", "orders"]
+      },
+      "OrderGrowthChartResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderGrowthDataPoint"
+            }
+          }
+        },
+        "required": ["data"]
+      },
+      "CategoryData": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Electronics"
+          },
+          "value": {
+            "type": "number",
+            "example": 45000
+          },
+          "color": {
+            "type": "string",
+            "example": "#278687"
+          },
+          "growth": {
+            "type": "string",
+            "example": "+12%"
+          },
+          "description": {
+            "type": "string",
+            "example": "Phones, Laptops & Accessories"
+          }
+        },
+        "required": ["name", "value", "color", "growth", "description"]
+      },
+      "SalesDistributionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryData"
+            }
+          }
+        },
+        "required": ["data"]
+      },
+      "CompleteAnalyticsResponse": {
+        "type": "object",
+        "properties": {
+          "revenue": {
+            "$ref": "#/components/schemas/RevenueChartResponse"
+          },
+          "users": {
+            "$ref": "#/components/schemas/UserGrowthChartResponse"
+          },
+          "orders": {
+            "$ref": "#/components/schemas/OrderGrowthChartResponse"
+          },
+          "categories": {
+            "$ref": "#/components/schemas/SalesDistributionResponse"
+          }
+        },
+        "required": ["revenue", "users", "orders", "categories"]
+      },
+      "CreateAdminChatMessageDto": {
+        "type": "object",
+        "properties": {
+          "messageText": {
+            "type": "string",
+            "description": "Message text content",
+            "example": "Hello! How can I help you today?"
+          }
+        },
+        "required": ["messageText"]
+      },
+      "CreateAdminChatThreadDto": {
+        "type": "object",
+        "properties": {
+          "buyerId": {
+            "type": "string",
+            "description": "Buyer ID to start a chat with",
+            "format": "uuid"
+          },
+          "vendorId": {
+            "type": "string",
+            "description": "Vendor ID to start a chat with",
+            "format": "uuid"
+          }
+        }
+      },
+      "CreateUserChatMessageDto": {
+        "type": "object",
+        "properties": {
+          "messageText": {
+            "type": "string",
+            "description": "Message text content",
+            "example": "Hi Admin, I need help with my order."
+          }
+        },
+        "required": ["messageText"]
+      }
+    }
+  }
+}

@@ -83,12 +83,12 @@ export class ProductsService {
     if (!category) {
       throw new NotFoundException("Category not found");
     }
-    console.log(category.vendor.fulllName);
+    console.log(category.vendor.fullName);
     if (category.vendorId !== vendorId) {
       throw new ForbiddenException("Category does not belong to this vendor");
     }
     const sku = await this.generateUniqueSKU(
-      category.vendor.fulllName,
+      category.vendor.fullName,
       category.name,
       createProductDto.name,
     );
