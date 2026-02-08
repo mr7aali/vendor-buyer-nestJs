@@ -10,7 +10,7 @@ import { Transform, Type } from "class-transformer";
 
 export enum VendorSortBy {
   CREATED_AT = "createdAt",
-  FULL_NAME = "fulllName",
+  FULL_NAME = "fullName",
   STORE_NAME = "storename",
   REVENUE = "revenue",
   RATING = "rating",

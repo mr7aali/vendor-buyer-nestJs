@@ -115,7 +115,7 @@ export class OrdersService {
     const [buyer, vendor] = await Promise.all([
       this.prisma.buyer.findUnique({
         where: { id: buyerId },
-        select: { userId: true, fulllName: true },
+        select: { userId: true, fullName: true },
       }),
       this.prisma.vendor.findUnique({
         where: { id: createOrderDto.vendorId },
@@ -378,7 +378,7 @@ export class OrdersService {
           buyer: {
             select: {
               id: true,
-              fulllName: true,
+              fullName: true,
               phone: true,
               // user: {
               //   select: {
@@ -392,7 +392,7 @@ export class OrdersService {
           // vendor: {
           //   select: {
           //     id: true,
-          //     fulllName: true,
+          //     fullName: true,
           //     businessName: true,
           //     vendorCode: true,
           //     logoUrl: true,
@@ -458,7 +458,7 @@ export class OrdersService {
         buyer: {
           select: {
             id: true,
-            fulllName: true,
+            fullName: true,
             phone: true,
             user: {
               select: {
@@ -471,7 +471,7 @@ export class OrdersService {
         vendor: {
           select: {
             id: true,
-            fulllName: true,
+            fullName: true,
             phone: true,
             businessName: true,
             vendorCode: true,

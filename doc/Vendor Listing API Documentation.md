@@ -10,21 +10,21 @@ Retrieves a paginated list of vendors with comprehensive filtering, searching, a
 
 ## Query Parameters
 
-| Parameter    | Type    | Default   | Description                                                                           |
-| ------------ | ------- | --------- | ------------------------------------------------------------------------------------- |
-| page         | number  | 1         | Page number for pagination                                                            |
-| limit        | number  | 10        | Number of items per page                                                              |
-| search       | string  | -         | Search across vendor name, store name, business name, phone, address                  |
-| vendorCode   | string  | -         | Filter by vendor code (partial match)                                                 |
-| gender       | string  | -         | Filter by gender                                                                      |
-| isActive     | boolean | -         | Filter by active status                                                               |
-| businessName | string  | -         | Filter by business name (partial match)                                               |
-| minRevenue   | number  | -         | Minimum revenue filter                                                                |
-| maxRevenue   | number  | -         | Maximum revenue filter                                                                |
-| minRating    | number  | -         | Minimum rating filter (0-5)                                                           |
-| maxRating    | number  | -         | Maximum rating filter (0-5)                                                           |
-| sortBy       | enum    | createdAt | Sort field: `createdAt`, `fulllName`, `storename`, `revenue`, `rating`, `totalOrders` |
-| sortOrder    | string  | desc      | Sort order: `asc` or `desc`                                                           |
+| Parameter    | Type    | Default   | Description                                                                          |
+| ------------ | ------- | --------- | ------------------------------------------------------------------------------------ |
+| page         | number  | 1         | Page number for pagination                                                           |
+| limit        | number  | 10        | Number of items per page                                                             |
+| search       | string  | -         | Search across vendor name, store name, business name, phone, address                 |
+| vendorCode   | string  | -         | Filter by vendor code (partial match)                                                |
+| gender       | string  | -         | Filter by gender                                                                     |
+| isActive     | boolean | -         | Filter by active status                                                              |
+| businessName | string  | -         | Filter by business name (partial match)                                              |
+| minRevenue   | number  | -         | Minimum revenue filter                                                               |
+| maxRevenue   | number  | -         | Maximum revenue filter                                                               |
+| minRating    | number  | -         | Minimum rating filter (0-5)                                                          |
+| maxRating    | number  | -         | Maximum rating filter (0-5)                                                          |
+| sortBy       | enum    | createdAt | Sort field: `createdAt`, `fullName`, `storename`, `revenue`, `rating`, `totalOrders` |
+| sortOrder    | string  | desc      | Sort order: `asc` or `desc`                                                          |
 
 ## Response Structure
 
@@ -35,7 +35,7 @@ Retrieves a paginated list of vendors with comprehensive filtering, searching, a
       "id": "uuid",
       "userId": "uuid",
       "vendorCode": "VEN-ABC123",
-      "fulllName": "John Doe",
+      "fullName": "John Doe",
       "phone": "+1234567890",
       "address": "123 Main St",
       "storename": "John's Store",
@@ -157,7 +157,7 @@ GET /vendors?gender=male&businessName=tech&page=1&limit=10
 - `id`: Unique vendor identifier
 - `userId`: Associated user account ID
 - `vendorCode`: Unique vendor code (e.g., VEN-ABC123)
-- `fulllName`: Vendor's full name
+- `fullName`: Vendor's full name
 - `phone`: Contact phone number
 - `address`: Physical address
 - `storename`: Store/shop name

@@ -86,7 +86,7 @@ export class ReviewService {
         buyer: {
           select: {
             id: true,
-            fulllName: true,
+            fullName: true,
             profilePhotoUrl: true,
           },
         },
@@ -151,7 +151,7 @@ export class ReviewService {
           buyer: {
             select: {
               id: true,
-              fulllName: true,
+              fullName: true,
               profilePhotoUrl: true,
             },
           },
@@ -207,7 +207,7 @@ export class ReviewService {
         buyer: {
           select: {
             id: true,
-            fulllName: true,
+            fullName: true,
             profilePhotoUrl: true,
           },
         },
@@ -314,7 +314,7 @@ export class ReviewService {
         buyer: {
           select: {
             id: true,
-            fulllName: true,
+            fullName: true,
             profilePhotoUrl: true,
           },
         },
@@ -379,7 +379,7 @@ export class ReviewService {
           buyer: {
             select: {
               id: true,
-              fulllName: true,
+              fullName: true,
               profilePhotoUrl: true,
             },
           },
@@ -434,7 +434,7 @@ export class ReviewService {
         buyer: {
           select: {
             id: true,
-            fulllName: true,
+            fullName: true,
             profilePhotoUrl: true,
           },
         },
@@ -561,7 +561,7 @@ export class ReviewService {
           vendor: {
             select: {
               id: true,
-              fulllName: true,
+              fullName: true,
               storename: true,
               logoUrl: true,
             },

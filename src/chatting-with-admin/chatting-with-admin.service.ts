@@ -61,7 +61,7 @@ export class ChattingWithAdminService {
         ? {
             id: thread.buyer.id,
             userId: thread.buyer.userId,
-            name: thread.buyer.fulllName,
+            name: thread.buyer.fullName,
             avatar: thread.buyer.profilePhotoUrl,
             role: "Buyer",
             email: thread.buyer.user?.email || "",
@@ -70,7 +70,7 @@ export class ChattingWithAdminService {
             id: thread.vendor?.id || "",
             userId: thread.vendor?.userId || "",
             name:
-              thread.vendor?.storename || thread.vendor?.fulllName || "Vendor",
+              thread.vendor?.storename || thread.vendor?.fullName || "Vendor",
             avatar: thread.vendor?.logoUrl || "",
             role: "Vendor",
             email: thread.vendor?.user?.email || "",

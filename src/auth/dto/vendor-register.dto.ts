@@ -3,7 +3,7 @@ import { IsString, IsEmail, IsOptional } from "class-validator";
 
 export class VendorRegisterDto {
   @IsString()
-  fulllName: string;
+  fullName: string;
 
   @IsString()
   phone: string;
