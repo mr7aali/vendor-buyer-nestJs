@@ -85,6 +85,10 @@ model Vendor {
   bussinessRegNumber    String
   isBussinessIdVerified Boolean @default(false)
   website               String  @default("")
+  stripeAccountId       String? @unique
+  stripeAccountStatus   String? // pending | verified | restricted
+  stripeChargesEnabled  Boolean @default(false)
+  stripePayoutsEnabled  Boolean @default(false)
 
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())

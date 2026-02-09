@@ -49,6 +49,126 @@ export class PaymentsService {
     return Number(value.toFixed(2));
   }
 
+  private getConnectReturnUrl(): string {
+    return (
+      this.configService.get<string>("STRIPE_CONNECT_RETURN_URL") ||
+      this.configService.get<string>("FRONTEND_URL") ||
+      this.configService.get<string>("APP_BASE_URL") ||
+      "https://example.com"
+    );
+  }
+
+  private getConnectRefreshUrl(): string {
+    return (
+      this.configService.get<string>("STRIPE_CONNECT_REFRESH_URL") ||
+      this.configService.get<string>("FRONTEND_URL") ||
+      this.configService.get<string>("APP_BASE_URL") ||
+      "https://example.com"
+    );
+  }
+
+  async createVendorStripeAccount(vendorId: string) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { id: vendorId },
+      include: { user: true },
+    });
+
+    if (!vendor) {
+      throw new NotFoundException("Vendor not found");
+    }
+
+    if (vendor.stripeAccountId) {
+      return {
+        stripeAccountId: vendor.stripeAccountId,
+        chargesEnabled: vendor.stripeChargesEnabled,
+        payoutsEnabled: vendor.stripePayoutsEnabled,
+        status: vendor.stripeAccountStatus ?? "pending",
+      };
+    }
+
+    const account = await this.stripe.accounts.create({
+      type: "express",
+      email: vendor.user?.email ?? undefined,
+      business_type: "individual",
+      metadata: {
+        vendorId: vendor.id,
+        vendorCode: vendor.vendorCode,
+      },
+    });
+
+    await this.prisma.vendor.update({
+      where: { id: vendor.id },
+      data: {
+        stripeAccountId: account.id,
+        stripeAccountStatus: "pending",
+        stripeChargesEnabled: account.charges_enabled ?? false,
+        stripePayoutsEnabled: account.payouts_enabled ?? false,
+      },
+    });
+
+    return {
+      stripeAccountId: account.id,
+      chargesEnabled: account.charges_enabled ?? false,
+      payoutsEnabled: account.payouts_enabled ?? false,
+      status: "pending",
+    };
+  }
+
+  async createVendorStripeAccountLink(vendorId: string) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { id: vendorId },
+    });
+
+    if (!vendor?.stripeAccountId) {
+      throw new BadRequestException("Vendor is not onboarded to Stripe");
+    }
+
+    const accountLink = await this.stripe.accountLinks.create({
+      account: vendor.stripeAccountId,
+      refresh_url: this.getConnectRefreshUrl(),
+      return_url: this.getConnectReturnUrl(),
+      type: "account_onboarding",
+    });
+
+    return { url: accountLink.url, expiresAt: accountLink.expires_at };
+  }
+
+  async getVendorStripeAccountStatus(vendorId: string) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { id: vendorId },
+    });
+
+    if (!vendor?.stripeAccountId) {
+      throw new BadRequestException("Vendor is not onboarded to Stripe");
+    }
+
+    const account = await this.stripe.accounts.retrieve(
+      vendor.stripeAccountId,
+    );
+
+    await this.prisma.vendor.update({
+      where: { id: vendor.id },
+      data: {
+        stripeAccountStatus:
+          account.charges_enabled && account.payouts_enabled
+            ? "verified"
+            : "pending",
+        stripeChargesEnabled: account.charges_enabled ?? false,
+        stripePayoutsEnabled: account.payouts_enabled ?? false,
+      },
+    });
+
+    return {
+      stripeAccountId: vendor.stripeAccountId,
+      chargesEnabled: account.charges_enabled ?? false,
+      payoutsEnabled: account.payouts_enabled ?? false,
+      status:
+        account.charges_enabled && account.payouts_enabled
+          ? "verified"
+          : "pending",
+    };
+  }
+
   async createPaymentIntent(
     buyerId: string,
     createPaymentDto: CreatePaymentDto,
@@ -71,6 +191,22 @@ export class PaymentsService {
 
     if (order.status === "cancelled") {
       throw new BadRequestException("Cannot pay for a cancelled order");
+    }
+
+    const vendorStripeAccountId = order.vendor?.stripeAccountId;
+    if (!vendorStripeAccountId) {
+      throw new BadRequestException(
+        "Vendor is not onboarded to Stripe",
+      );
+    }
+
+    if (
+      order.vendor?.stripeChargesEnabled === false ||
+      order.vendor?.stripePayoutsEnabled === false
+    ) {
+      throw new BadRequestException(
+        "Vendor Stripe account is not fully enabled",
+      );
     }
 
     // Check if payment already exists
@@ -142,10 +278,14 @@ export class PaymentsService {
           quantity: 1,
         },
       ],
-      // success_url: successUrl,
-      // cancel_url: cancelUrl,
-      success_url: "http://127.0.0.1:5500/test/payment/success/",
-      cancel_url: "http://127.0.0.1:5500/test/payment/cancle/",
+      payment_intent_data: {
+        application_fee_amount: Math.round(adminCommissionAmount * 100),
+        transfer_data: {
+          destination: vendorStripeAccountId,
+        },
+      },
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
         orderId: order.id,
         buyerId: buyerId,
