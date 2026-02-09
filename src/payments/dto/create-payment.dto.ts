@@ -22,5 +22,7 @@ export class PaymentResponseDto {
   orderId: string;
   orderNumber: string;
   amount: number;
+  adminCommissionAmount?: number;
+  vendorPayoutAmount?: number;
   message?: string;
 }

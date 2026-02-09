@@ -252,14 +252,16 @@ model OrderItem {
 }
 
 model Payment {
-  id               String   @id @default(uuid())
-  orderId          String   @unique
-  stripePaymentId  String?  @unique // This is the session ID
-  stripeCustomerId String?
-  amount           Decimal  @db.Decimal(10, 2)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  status           String
+  id                    String   @id @default(uuid())
+  orderId               String   @unique
+  stripePaymentId       String?  @unique // This is the session ID
+  stripeCustomerId      String?
+  amount                Decimal  @db.Decimal(10, 2)
+  adminCommissionAmount Decimal  @default(0) @db.Decimal(10, 2)
+  vendorPayoutAmount    Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  status                String
 
   // NEW: Add these fields for better tracking
   paymentMethod  String? // e.g., "card", "wallet"

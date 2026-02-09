@@ -32,6 +32,23 @@ export class PaymentsService {
     });
   }
 
+  private getCommissionRate(): number {
+    const raw = this.configService.get<string>("ADMIN_COMMISSION_RATE");
+    if (!raw) {
+      return 0.1;
+    }
+    const parsed = Number(raw);
+    if (Number.isNaN(parsed) || !Number.isFinite(parsed)) {
+      return 0.1;
+    }
+    const normalized = parsed > 1 ? parsed / 100 : parsed;
+    return Math.min(Math.max(normalized, 0), 1);
+  }
+
+  private roundMoney(value: number): number {
+    return Number(value.toFixed(2));
+  }
+
   async createPaymentIntent(
     buyerId: string,
     createPaymentDto: CreatePaymentDto,
@@ -94,6 +111,15 @@ export class PaymentsService {
       }
     }
 
+    const totalAmount = Number(order.totalAmount);
+    const commissionRate = this.getCommissionRate();
+    const adminCommissionAmount = this.roundMoney(
+      totalAmount * commissionRate,
+    );
+    const vendorPayoutAmount = this.roundMoney(
+      totalAmount - adminCommissionAmount,
+    );
+
     // Build success and cancel URLs with order info
     const baseUrl =
       this.configService.get<string>("FRONTEND_URL") || "https://example.com";
@@ -107,7 +133,7 @@ export class PaymentsService {
         {
           price_data: {
             currency: "usd",
-            unit_amount: Math.round(Number(order.totalAmount) * 100),
+            unit_amount: Math.round(totalAmount * 100),
             product_data: {
               name: `Order #${order.orderNumber}`,
               description: `Payment for order from ${order.vendor.storename}`,
@@ -125,6 +151,9 @@ export class PaymentsService {
         buyerId: buyerId,
         vendorId: order.vendorId,
         orderNumber: order.orderNumber,
+        commissionRate: commissionRate.toString(),
+        adminCommissionAmount: adminCommissionAmount.toFixed(2),
+        vendorPayoutAmount: vendorPayoutAmount.toFixed(2),
       },
       // customer_email: order.buyer.user.email,
       expires_at: Math.floor(Date.now() / 1000) + 3600, // Expires in 1 hour
@@ -137,6 +166,8 @@ export class PaymentsService {
         stripePaymentId: checkoutSession.id,
         stripeCustomerId: checkoutSession.customer as string | null,
         amount: order.totalAmount,
+        adminCommissionAmount,
+        vendorPayoutAmount,
         status: "pending",
       },
       create: {
@@ -144,6 +175,8 @@ export class PaymentsService {
         stripePaymentId: checkoutSession.id,
         stripeCustomerId: checkoutSession.customer as string | null,
         amount: order.totalAmount,
+        adminCommissionAmount,
+        vendorPayoutAmount,
         status: "pending",
       },
     });
@@ -156,7 +189,9 @@ export class PaymentsService {
       expiresAt: new Date(checkoutSession.expires_at * 1000).toISOString(),
       orderId: order.id,
       orderNumber: order.orderNumber,
-      amount: Number(order.totalAmount),
+      amount: totalAmount,
+      adminCommissionAmount,
+      vendorPayoutAmount,
     };
   }
 
@@ -186,11 +221,22 @@ export class PaymentsService {
     }
 
     // Update payment status
+    const paymentAmount = Number(payment.amount);
+    const commissionRate = this.getCommissionRate();
+    const adminCommissionAmount = this.roundMoney(
+      paymentAmount * commissionRate,
+    );
+    const vendorPayoutAmount = this.roundMoney(
+      paymentAmount - adminCommissionAmount,
+    );
+
     await this.prisma.payment.update({
       where: { id: payment.id },
       data: {
         status: "succeeded",
         stripeCustomerId: session.customer as string | null,
+        adminCommissionAmount,
+        vendorPayoutAmount,
       },
     });
 
@@ -205,7 +251,9 @@ export class PaymentsService {
     if (payment.order?.buyer?.userId) {
       await this.notificationsService.notifyBuyer(payment.order.buyer.userId, {
         title: "Payment succeeded",
-        message: `Payment received for order ${payment.order.orderNumber}.`,
+        message: `Payment received for order ${payment.order.orderNumber}. Amount: $${paymentAmount.toFixed(
+          2,
+        )}.`,
         type: NotificationType.SUCCESS,
       });
     }
@@ -213,7 +261,9 @@ export class PaymentsService {
     if (payment.order?.vendor?.userId) {
       await this.notificationsService.notifyVendor(payment.order.vendor.userId, {
         title: "Payment received",
-        message: `Payment received for order ${payment.order.orderNumber}.`,
+        message: `Payment received for order ${payment.order.orderNumber}. Payout: $${vendorPayoutAmount.toFixed(
+          2,
+        )}. Admin commission: $${adminCommissionAmount.toFixed(2)}.`,
         type: NotificationType.SUCCESS,
       });
     }
