@@ -13,7 +13,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
             min-height: 100vh;
             display: flex;
@@ -27,12 +27,12 @@
             padding: 50px;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 600px;
+            max-width: 700px;
             width: 100%;
             text-align: center;
         }
 
-        .checkmark {
+        .badge {
             width: 80px;
             height: 80px;
             border-radius: 50%;
@@ -41,44 +41,29 @@
             align-items: center;
             justify-content: center;
             margin: 0 auto 30px;
-            animation: scaleIn 0.5s ease-out;
-        }
-
-        .checkmark::after {
-            content: '✓';
             color: white;
-            font-size: 50px;
+            font-size: 28px;
             font-weight: bold;
-        }
-
-        @keyframes scaleIn {
-            from {
-                transform: scale(0);
-            }
-
-            to {
-                transform: scale(1);
-            }
         }
 
         h1 {
             color: #11998e;
             margin-bottom: 20px;
-            font-size: 2.5em;
+            font-size: 2.2em;
         }
 
         .details {
             background: #f8f9fa;
-            padding: 30px;
+            padding: 24px;
             border-radius: 15px;
-            margin: 30px 0;
+            margin: 20px 0;
             text-align: left;
         }
 
         .detail-row {
             display: flex;
             justify-content: space-between;
-            padding: 12px 0;
+            padding: 10px 0;
             border-bottom: 1px solid #e0e0e0;
         }
 
@@ -94,12 +79,15 @@
         .detail-value {
             color: #333;
             font-weight: 500;
+            max-width: 60%;
+            text-align: right;
+            word-break: break-word;
         }
 
         .btn {
             background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
             color: white;
-            padding: 15px 40px;
+            padding: 12px 20px;
             border: none;
             border-radius: 10px;
             cursor: pointer;
@@ -107,7 +95,7 @@
             font-weight: 600;
             text-decoration: none;
             display: inline-block;
-            margin-top: 20px;
+            margin-top: 10px;
             transition: transform 0.2s;
         }
 
@@ -115,108 +103,142 @@
             transform: translateY(-2px);
         }
 
-        .loading {
-            color: #11998e;
-            font-size: 18px;
-        }
-
         .message {
             color: #666;
-            font-size: 18px;
+            font-size: 16px;
             line-height: 1.6;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-top: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .notice {
+            background: #eef2ff;
+            color: #1e3a8a;
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 16px;
+            text-align: left;
+            font-size: 14px;
         }
     </style>
 </head>
 
 <body>
     <div class="card">
-        <div class="checkmark"></div>
-        <h1>Payment Successful!</h1>
-        <p class="message">Thank you for your payment. Your order has been confirmed.</p>
+        <div class="badge">OK</div>
+        <h1>Payment Successful</h1>
+        <p class="message">Your order has been confirmed. You can fetch the payment status below.</p>
 
-        <div class="details" id="details">
-            <div class="loading">⏳ Loading payment details...</div>
+        <div class="form-group">
+            <label>Backend URL</label>
+            <input type="text" id="backendUrl" placeholder="http://localhost:3000" value="http://localhost:3000">
         </div>
 
-        <a href="/" class="btn">Continue Shopping</a>
+        <div class="form-group">
+            <label>Buyer JWT Token</label>
+            <input type="text" id="jwtToken" placeholder="Paste buyer JWT token">
+        </div>
+
+        <button class="btn" onclick="loadPaymentDetails()">Load Payment Status</button>
+
+        <div class="notice">Tip: This endpoint requires a valid buyer JWT.</div>
+
+        <div class="details" id="details">
+            <div class="detail-row">
+                <span class="detail-label">Session ID:</span>
+                <span class="detail-value" id="sessionId">Loading...</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Order ID:</span>
+                <span class="detail-value" id="orderId">Loading...</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Status:</span>
+                <span class="detail-value">Confirmed</span>
+            </div>
+        </div>
+
+        <a href="/" class="btn">Continue</a>
     </div>
 
     <script>
-        async function loadPaymentDetails() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const sessionId = urlParams.get('session_id');
-            const orderId = urlParams.get('order_id');
+        function getQueryParams() {
+            return new URLSearchParams(window.location.search);
+        }
 
-            if (!sessionId && !orderId) {
-                document.getElementById('details').innerHTML = `
-                    <div class="detail-row">
-                        <span class="detail-label">Status:</span>
-                        <span class="detail-value">Confirmed</span>
-                    </div>
-                `;
+        function prefill() {
+            const params = getQueryParams();
+            const backendUrl = params.get('backend_url');
+            const sessionId = params.get('session_id');
+            const orderId = params.get('order_id');
+            const token = params.get('buyer_token');
+
+            if (backendUrl) document.getElementById('backendUrl').value = backendUrl;
+            if (token) document.getElementById('jwtToken').value = token;
+            document.getElementById('sessionId').textContent = sessionId || 'N/A';
+            document.getElementById('orderId').textContent = orderId || 'N/A';
+        }
+
+        async function loadPaymentDetails() {
+            const params = getQueryParams();
+            const sessionId = params.get('session_id');
+            const orderId = params.get('order_id');
+            const backendUrl = document.getElementById('backendUrl').value.trim();
+            const jwtToken = document.getElementById('jwtToken').value.trim();
+
+            if (!backendUrl || !jwtToken || !sessionId) {
                 return;
             }
 
-            // You can add backend URL as a query parameter or hardcode it
-            const backendUrl = urlParams.get('backend_url') || 'http://localhost:3000';
-
             try {
-                let details = {};
-
-                if (sessionId) {
-                    // Note: This endpoint requires authentication
-                    // You might need to pass token or make this endpoint public
-                    const response = await fetch(`${backendUrl}/payments/status/${sessionId}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        details = {
-                            'Session ID': sessionId,
-                            'Payment Status': data.paymentStatus,
-                            'Session Status': data.sessionStatus,
-                            'Order ID': orderId || data.paymentRecord?.orderId || 'N/A'
-                        };
+                const response = await fetch(`${backendUrl}/payments/status/${sessionId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${jwtToken}`
                     }
-                }
+                });
+                const data = await response.json();
 
-                if (Object.keys(details).length === 0) {
-                    details = {
-                        'Session ID': sessionId || 'N/A',
-                        'Order ID': orderId || 'N/A',
-                        'Status': 'Confirmed'
-                    };
-                }
+                const rows = [];
+                rows.push(['Session ID', sessionId]);
+                rows.push(['Order ID', orderId || data.paymentRecord?.orderId || 'N/A']);
+                rows.push(['Session Status', data.sessionStatus || 'N/A']);
+                rows.push(['Payment Status', data.paymentStatus || 'N/A']);
+                if (data.paymentRecord?.amount) rows.push(['Amount', data.paymentRecord.amount]);
+                if (data.paymentRecord?.adminCommissionAmount) rows.push(['Admin Commission', data.paymentRecord.adminCommissionAmount]);
+                if (data.paymentRecord?.vendorPayoutAmount) rows.push(['Vendor Payout', data.paymentRecord.vendorPayoutAmount]);
 
-                let html = '';
-                for (let [key, value] of Object.entries(details)) {
-                    html += `
-                        <div class="detail-row">
-                            <span class="detail-label">${key}:</span>
-                            <span class="detail-value">${value}</span>
-                        </div>
-                    `;
-                }
+                const html = rows.map(([label, value]) => `
+                    <div class="detail-row">
+                        <span class="detail-label">${label}:</span>
+                        <span class="detail-value">${value}</span>
+                    </div>
+                `).join('');
 
                 document.getElementById('details').innerHTML = html;
-
             } catch (error) {
-                document.getElementById('details').innerHTML = `
-                    <div class="detail-row">
-                        <span class="detail-label">Session ID:</span>
-                        <span class="detail-value">${sessionId || 'N/A'}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Order ID:</span>
-                        <span class="detail-value">${orderId || 'N/A'}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Status:</span>
-                        <span class="detail-value">Confirmed</span>
-                    </div>
-                `;
+                // Keep default display
             }
         }
 
-        window.addEventListener('DOMContentLoaded', loadPaymentDetails);
+        window.addEventListener('DOMContentLoaded', prefill);
     </script>
 </body>
 

@@ -142,9 +142,7 @@ export class PaymentsService {
       throw new BadRequestException("Vendor is not onboarded to Stripe");
     }
 
-    const account = await this.stripe.accounts.retrieve(
-      vendor.stripeAccountId,
-    );
+    const account = await this.stripe.accounts.retrieve(vendor.stripeAccountId);
 
     await this.prisma.vendor.update({
       where: { id: vendor.id },
@@ -195,9 +193,7 @@ export class PaymentsService {
 
     const vendorStripeAccountId = order.vendor?.stripeAccountId;
     if (!vendorStripeAccountId) {
-      throw new BadRequestException(
-        "Vendor is not onboarded to Stripe",
-      );
+      throw new BadRequestException("Vendor is not onboarded to Stripe");
     }
 
     if (
@@ -249,9 +245,7 @@ export class PaymentsService {
 
     const totalAmount = Number(order.totalAmount);
     const commissionRate = this.getCommissionRate();
-    const adminCommissionAmount = this.roundMoney(
-      totalAmount * commissionRate,
-    );
+    const adminCommissionAmount = this.roundMoney(totalAmount * commissionRate);
     const vendorPayoutAmount = this.roundMoney(
       totalAmount - adminCommissionAmount,
     );
@@ -399,13 +393,16 @@ export class PaymentsService {
     }
 
     if (payment.order?.vendor?.userId) {
-      await this.notificationsService.notifyVendor(payment.order.vendor.userId, {
-        title: "Payment received",
-        message: `Payment received for order ${payment.order.orderNumber}. Payout: $${vendorPayoutAmount.toFixed(
-          2,
-        )}. Admin commission: $${adminCommissionAmount.toFixed(2)}.`,
-        type: NotificationType.SUCCESS,
-      });
+      await this.notificationsService.notifyVendor(
+        payment.order.vendor.userId,
+        {
+          title: "Payment received",
+          message: `Payment received for order ${payment.order.orderNumber}. Payout: $${vendorPayoutAmount.toFixed(
+            2,
+          )}. Admin commission: $${adminCommissionAmount.toFixed(2)}.`,
+          type: NotificationType.SUCCESS,
+        },
+      );
     }
 
     console.log(`Payment succeeded for order: ${orderId}`);
@@ -530,10 +527,49 @@ export class PaymentsService {
         }
         break;
 
+      case "account.updated":
+        const updatedAccount = event.data.object as Stripe.Account;
+        await this.updateVendorStripeAccountStatus(updatedAccount);
+        break;
+
+      case "account.application.deauthorized":
+        const deauthorized = event.data.object as unknown as Stripe.Account;
+        await this.updateVendorStripeAccountStatus(deauthorized, true);
+        break;
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
 
     return { received: true };
+  }
+
+  private async updateVendorStripeAccountStatus(
+    account: Stripe.Account,
+    deauthorized: boolean = false,
+  ) {
+    const chargesEnabled = deauthorized
+      ? false
+      : (account.charges_enabled ?? false);
+    const payoutsEnabled = deauthorized
+      ? false
+      : (account.payouts_enabled ?? false);
+
+    let status = "pending";
+    if (chargesEnabled && payoutsEnabled) {
+      status = "verified";
+    }
+    if (account.requirements?.disabled_reason || deauthorized) {
+      status = "restricted";
+    }
+
+    await this.prisma.vendor.updateMany({
+      where: { stripeAccountId: account.id },
+      data: {
+        stripeChargesEnabled: chargesEnabled,
+        stripePayoutsEnabled: payoutsEnabled,
+        stripeAccountStatus: status,
+      },
+    });
   }
 }

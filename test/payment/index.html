@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment</title>
+    <title>Payment Test</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
@@ -27,19 +27,26 @@
             padding: 40px;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
+            max-width: 700px;
             width: 100%;
             text-align: center;
         }
 
         h1 {
             color: #667eea;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             font-size: 2em;
         }
 
+        h2 {
+            color: #333;
+            font-size: 1.1em;
+            margin: 20px 0 10px;
+            text-align: left;
+        }
+
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             text-align: left;
         }
 
@@ -52,7 +59,7 @@
 
         input {
             width: 100%;
-            padding: 15px;
+            padding: 12px;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
             font-size: 16px;
@@ -67,14 +74,14 @@
         .btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 15px 40px;
+            padding: 12px 20px;
             border: none;
             border-radius: 10px;
             cursor: pointer;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
             width: 100%;
-            margin-top: 20px;
+            margin-top: 8px;
             transition: transform 0.2s;
         }
 
@@ -87,60 +94,135 @@
             cursor: not-allowed;
         }
 
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .row .btn {
+            flex: 1;
+        }
+
         .loading {
             color: #667eea;
-            margin-top: 20px;
+            margin-top: 16px;
         }
 
         .error {
             background: #fee2e2;
             color: #991b1b;
-            padding: 15px;
+            padding: 12px;
             border-radius: 10px;
-            margin-top: 20px;
+            margin-top: 16px;
+        }
+
+        .success {
+            background: #dcfce7;
+            color: #166534;
+            padding: 12px;
+            border-radius: 10px;
+            margin-top: 16px;
+        }
+
+        pre {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            overflow: auto;
+            max-height: 260px;
+            text-align: left;
+            margin-top: 12px;
         }
     </style>
 </head>
 
 <body>
     <div class="card">
-        <h1>💳 Pay Now</h1>
+        <h1>Stripe Payment Test</h1>
 
         <div class="form-group">
             <label>Backend URL</label>
             <input type="text" id="backendUrl" placeholder="http://localhost:3000" value="http://localhost:3000">
         </div>
 
+        <h2>Buyer - Create Payment</h2>
         <div class="form-group">
             <label>Order ID</label>
             <input type="text" id="orderId" placeholder="Enter your order ID">
         </div>
 
         <div class="form-group">
-            <label>JWT Token</label>
-            <input type="text" id="jwtToken" placeholder="Paste your JWT token">
+            <label>Buyer JWT Token</label>
+            <input type="text" id="buyerJwtToken" placeholder="Paste buyer JWT token">
         </div>
 
         <button class="btn" id="payBtn" onclick="createPayment()">Create Payment</button>
 
+        <h2>Vendor - Stripe Connect</h2>
+        <div class="form-group">
+            <label>Vendor JWT Token</label>
+            <input type="text" id="vendorJwtToken" placeholder="Paste vendor JWT token">
+        </div>
+
+        <div class="row">
+            <button class="btn" id="createAccountBtn" onclick="createVendorAccount()">Create Stripe Account</button>
+            <button class="btn" id="accountLinkBtn" onclick="createAccountLink()">Create Account Link</button>
+        </div>
+        <div class="row">
+            <button class="btn" id="statusBtn" onclick="getAccountStatus()">Get Stripe Status</button>
+        </div>
+
         <div id="message"></div>
+        <div id="output"></div>
     </div>
 
     <script>
+        function getQueryParams() {
+            return new URLSearchParams(window.location.search);
+        }
+
+        function setPrefillValues() {
+            const params = getQueryParams();
+            const backendUrl = params.get('backend_url');
+            const orderId = params.get('order_id');
+            const buyerToken = params.get('buyer_token');
+            const vendorToken = params.get('vendor_token');
+
+            if (backendUrl) document.getElementById('backendUrl').value = backendUrl;
+            if (orderId) document.getElementById('orderId').value = orderId;
+            if (buyerToken) document.getElementById('buyerJwtToken').value = buyerToken;
+            if (vendorToken) document.getElementById('vendorJwtToken').value = vendorToken;
+        }
+
+        function setMessage(html) {
+            document.getElementById('message').innerHTML = html;
+        }
+
+        function setOutput(data) {
+            const output = document.getElementById('output');
+            if (!data) {
+                output.innerHTML = '';
+                return;
+            }
+            output.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
+
         async function createPayment() {
             const backendUrl = document.getElementById('backendUrl').value.trim();
             const orderId = document.getElementById('orderId').value.trim();
-            const jwtToken = document.getElementById('jwtToken').value.trim();
-            const messageDiv = document.getElementById('message');
+            const jwtToken = document.getElementById('buyerJwtToken').value.trim();
             const btn = document.getElementById('payBtn');
 
             if (!backendUrl || !orderId || !jwtToken) {
-                messageDiv.innerHTML = '<div class="error">Please fill all fields</div>';
+                setMessage('<div class="error">Please fill all buyer fields</div>');
                 return;
             }
 
             btn.disabled = true;
-            messageDiv.innerHTML = '<div class="loading">⏳ Creating payment...</div>';
+            setMessage('<div class="loading">Creating payment...</div>');
+            setOutput(null);
 
             try {
                 const response = await fetch(`${backendUrl}/payments/create-intent`, {
@@ -155,19 +237,133 @@
                 const data = await response.json();
 
                 if (response.ok && data.paymentLink) {
-                    messageDiv.innerHTML = '<div class="loading">✅ Redirecting to payment...</div>';
+                    setMessage('<div class="success">Redirecting to Stripe Checkout...</div>');
+                    setOutput(data);
                     setTimeout(() => {
                         window.location.href = data.paymentLink;
                     }, 1000);
                 } else {
-                    messageDiv.innerHTML = `<div class="error">${data.message || 'Payment creation failed'}</div>`;
+                    setMessage(`<div class="error">${data.message || 'Payment creation failed'}</div>`);
+                    setOutput(data);
                     btn.disabled = false;
                 }
             } catch (error) {
-                messageDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                setMessage(`<div class="error">Error: ${error.message}</div>`);
                 btn.disabled = false;
             }
         }
+
+        async function createVendorAccount() {
+            const backendUrl = document.getElementById('backendUrl').value.trim();
+            const jwtToken = document.getElementById('vendorJwtToken').value.trim();
+            const btn = document.getElementById('createAccountBtn');
+
+            if (!backendUrl || !jwtToken) {
+                setMessage('<div class="error">Please provide backend URL and vendor token</div>');
+                return;
+            }
+
+            btn.disabled = true;
+            setMessage('<div class="loading">Creating Stripe account...</div>');
+            setOutput(null);
+
+            try {
+                const response = await fetch(`${backendUrl}/payments/vendor/stripe/account`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${jwtToken}`
+                    }
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    setMessage('<div class="success">Stripe account ready</div>');
+                } else {
+                    setMessage(`<div class="error">${data.message || 'Failed to create account'}</div>`);
+                }
+                setOutput(data);
+            } catch (error) {
+                setMessage(`<div class="error">Error: ${error.message}</div>`);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function createAccountLink() {
+            const backendUrl = document.getElementById('backendUrl').value.trim();
+            const jwtToken = document.getElementById('vendorJwtToken').value.trim();
+            const btn = document.getElementById('accountLinkBtn');
+
+            if (!backendUrl || !jwtToken) {
+                setMessage('<div class="error">Please provide backend URL and vendor token</div>');
+                return;
+            }
+
+            btn.disabled = true;
+            setMessage('<div class="loading">Creating onboarding link...</div>');
+            setOutput(null);
+
+            try {
+                const response = await fetch(`${backendUrl}/payments/vendor/stripe/account-link`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${jwtToken}`
+                    }
+                });
+
+                const data = await response.json();
+                if (response.ok && data.url) {
+                    setMessage('<div class="success">Opening onboarding link...</div>');
+                    setOutput(data);
+                    window.open(data.url, '_blank');
+                } else {
+                    setMessage(`<div class="error">${data.message || 'Failed to create account link'}</div>`);
+                    setOutput(data);
+                }
+            } catch (error) {
+                setMessage(`<div class="error">Error: ${error.message}</div>`);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function getAccountStatus() {
+            const backendUrl = document.getElementById('backendUrl').value.trim();
+            const jwtToken = document.getElementById('vendorJwtToken').value.trim();
+            const btn = document.getElementById('statusBtn');
+
+            if (!backendUrl || !jwtToken) {
+                setMessage('<div class="error">Please provide backend URL and vendor token</div>');
+                return;
+            }
+
+            btn.disabled = true;
+            setMessage('<div class="loading">Checking Stripe status...</div>');
+            setOutput(null);
+
+            try {
+                const response = await fetch(`${backendUrl}/payments/vendor/stripe/status`, {
+                    headers: {
+                        'Authorization': `Bearer ${jwtToken}`
+                    }
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    setMessage('<div class="success">Status loaded</div>');
+                } else {
+                    setMessage(`<div class="error">${data.message || 'Failed to load status'}</div>`);
+                }
+                setOutput(data);
+            } catch (error) {
+                setMessage(`<div class="error">Error: ${error.message}</div>`);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', setPrefillValues);
     </script>
 </body>
 
