@@ -13,18 +13,18 @@ export class CreateProductReviewDto {
   @IsUUID()
   productId: string;
 
-  @IsOptional()
+  // @IsOptional()
   @IsUUID()
-  orderId?: string;
+  orderId: string;
 
   @IsInt()
   @Min(1)
   @Max(5)
   rating: number;
 
-  @IsOptional()
+  // @IsOptional()
   @IsString()
-  comment?: string;
+  comment: string;
 }
 
 export class UpdateProductReviewDto {

@@ -1885,7 +1885,11 @@ export class AuthService {
         },
       });
     }
-    return await this.prisma.vendor.findMany({});
+    return await this.prisma.user.findUnique({
+      where: {
+        id,
+      },
+    });
   }
   // Service
   // Service - Fixed updateProfile method
