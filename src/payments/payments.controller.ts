@@ -47,6 +47,47 @@ export class PaymentsController {
     return this.paymentsService.createPaymentIntent(buyer.id, createPaymentDto);
   }
 
+  @Post("vendor/stripe/account")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserType.VENDOR)
+  @HttpCode(HttpStatus.CREATED)
+  async createVendorStripeAccount(@GetUser() user: any) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { userId: user.id },
+    });
+    if (!vendor) {
+      throw new NotFoundException("Vendor profile not found");
+    }
+    return this.paymentsService.createVendorStripeAccount(vendor.id);
+  }
+
+  @Post("vendor/stripe/account-link")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserType.VENDOR)
+  @HttpCode(HttpStatus.CREATED)
+  async createVendorStripeAccountLink(@GetUser() user: any) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { userId: user.id },
+    });
+    if (!vendor) {
+      throw new NotFoundException("Vendor profile not found");
+    }
+    return this.paymentsService.createVendorStripeAccountLink(vendor.id);
+  }
+
+  @Get("vendor/stripe/status")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserType.VENDOR)
+  async getVendorStripeStatus(@GetUser() user: any) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { userId: user.id },
+    });
+    if (!vendor) {
+      throw new NotFoundException("Vendor profile not found");
+    }
+    return this.paymentsService.getVendorStripeAccountStatus(vendor.id);
+  }
+
   @Get("order/:orderId")
   @UseGuards(JwtAuthGuard)
   async getPaymentByOrderId(@Param("orderId") orderId: string) {

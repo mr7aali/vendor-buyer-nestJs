@@ -32,6 +32,141 @@ export class PaymentsService {
     });
   }
 
+  private getCommissionRate(): number {
+    const raw = this.configService.get<string>("ADMIN_COMMISSION_RATE");
+    if (!raw) {
+      return 0.1;
+    }
+    const parsed = Number(raw);
+    if (Number.isNaN(parsed) || !Number.isFinite(parsed)) {
+      return 0.1;
+    }
+    const normalized = parsed > 1 ? parsed / 100 : parsed;
+    return Math.min(Math.max(normalized, 0), 1);
+  }
+
+  private roundMoney(value: number): number {
+    return Number(value.toFixed(2));
+  }
+
+  private getConnectReturnUrl(): string {
+    return (
+      this.configService.get<string>("STRIPE_CONNECT_RETURN_URL") ||
+      this.configService.get<string>("FRONTEND_URL") ||
+      this.configService.get<string>("APP_BASE_URL") ||
+      "https://example.com"
+    );
+  }
+
+  private getConnectRefreshUrl(): string {
+    return (
+      this.configService.get<string>("STRIPE_CONNECT_REFRESH_URL") ||
+      this.configService.get<string>("FRONTEND_URL") ||
+      this.configService.get<string>("APP_BASE_URL") ||
+      "https://example.com"
+    );
+  }
+
+  async createVendorStripeAccount(vendorId: string) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { id: vendorId },
+      include: { user: true },
+    });
+
+    if (!vendor) {
+      throw new NotFoundException("Vendor not found");
+    }
+
+    if (vendor.stripeAccountId) {
+      return {
+        stripeAccountId: vendor.stripeAccountId,
+        chargesEnabled: vendor.stripeChargesEnabled,
+        payoutsEnabled: vendor.stripePayoutsEnabled,
+        status: vendor.stripeAccountStatus ?? "pending",
+      };
+    }
+
+    const account = await this.stripe.accounts.create({
+      type: "express",
+      email: vendor.user?.email ?? undefined,
+      business_type: "individual",
+      metadata: {
+        vendorId: vendor.id,
+        vendorCode: vendor.vendorCode,
+      },
+    });
+
+    await this.prisma.vendor.update({
+      where: { id: vendor.id },
+      data: {
+        stripeAccountId: account.id,
+        stripeAccountStatus: "pending",
+        stripeChargesEnabled: account.charges_enabled ?? false,
+        stripePayoutsEnabled: account.payouts_enabled ?? false,
+      },
+    });
+
+    return {
+      stripeAccountId: account.id,
+      chargesEnabled: account.charges_enabled ?? false,
+      payoutsEnabled: account.payouts_enabled ?? false,
+      status: "pending",
+    };
+  }
+
+  async createVendorStripeAccountLink(vendorId: string) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { id: vendorId },
+    });
+
+    if (!vendor?.stripeAccountId) {
+      throw new BadRequestException("Vendor is not onboarded to Stripe");
+    }
+
+    const accountLink = await this.stripe.accountLinks.create({
+      account: vendor.stripeAccountId,
+      refresh_url: this.getConnectRefreshUrl(),
+      return_url: this.getConnectReturnUrl(),
+      type: "account_onboarding",
+    });
+
+    return { url: accountLink.url, expiresAt: accountLink.expires_at };
+  }
+
+  async getVendorStripeAccountStatus(vendorId: string) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { id: vendorId },
+    });
+
+    if (!vendor?.stripeAccountId) {
+      throw new BadRequestException("Vendor is not onboarded to Stripe");
+    }
+
+    const account = await this.stripe.accounts.retrieve(vendor.stripeAccountId);
+
+    await this.prisma.vendor.update({
+      where: { id: vendor.id },
+      data: {
+        stripeAccountStatus:
+          account.charges_enabled && account.payouts_enabled
+            ? "verified"
+            : "pending",
+        stripeChargesEnabled: account.charges_enabled ?? false,
+        stripePayoutsEnabled: account.payouts_enabled ?? false,
+      },
+    });
+
+    return {
+      stripeAccountId: vendor.stripeAccountId,
+      chargesEnabled: account.charges_enabled ?? false,
+      payoutsEnabled: account.payouts_enabled ?? false,
+      status:
+        account.charges_enabled && account.payouts_enabled
+          ? "verified"
+          : "pending",
+    };
+  }
+
   async createPaymentIntent(
     buyerId: string,
     createPaymentDto: CreatePaymentDto,
@@ -54,6 +189,20 @@ export class PaymentsService {
 
     if (order.status === "cancelled") {
       throw new BadRequestException("Cannot pay for a cancelled order");
+    }
+
+    const vendorStripeAccountId = order.vendor?.stripeAccountId;
+    if (!vendorStripeAccountId) {
+      throw new BadRequestException("Vendor is not onboarded to Stripe");
+    }
+
+    if (
+      order.vendor?.stripeChargesEnabled === false ||
+      order.vendor?.stripePayoutsEnabled === false
+    ) {
+      throw new BadRequestException(
+        "Vendor Stripe account is not fully enabled",
+      );
     }
 
     // Check if payment already exists
@@ -94,6 +243,13 @@ export class PaymentsService {
       }
     }
 
+    const totalAmount = Number(order.totalAmount);
+    const commissionRate = this.getCommissionRate();
+    const adminCommissionAmount = this.roundMoney(totalAmount * commissionRate);
+    const vendorPayoutAmount = this.roundMoney(
+      totalAmount - adminCommissionAmount,
+    );
+
     // Build success and cancel URLs with order info
     const baseUrl =
       this.configService.get<string>("FRONTEND_URL") || "https://example.com";
@@ -107,7 +263,7 @@ export class PaymentsService {
         {
           price_data: {
             currency: "usd",
-            unit_amount: Math.round(Number(order.totalAmount) * 100),
+            unit_amount: Math.round(totalAmount * 100),
             product_data: {
               name: `Order #${order.orderNumber}`,
               description: `Payment for order from ${order.vendor.storename}`,
@@ -116,15 +272,22 @@ export class PaymentsService {
           quantity: 1,
         },
       ],
-      // success_url: successUrl,
-      // cancel_url: cancelUrl,
-      success_url: "http://127.0.0.1:5500/test/payment/success/",
-      cancel_url: "http://127.0.0.1:5500/test/payment/cancle/",
+      payment_intent_data: {
+        application_fee_amount: Math.round(adminCommissionAmount * 100),
+        transfer_data: {
+          destination: vendorStripeAccountId,
+        },
+      },
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
         orderId: order.id,
         buyerId: buyerId,
         vendorId: order.vendorId,
         orderNumber: order.orderNumber,
+        commissionRate: commissionRate.toString(),
+        adminCommissionAmount: adminCommissionAmount.toFixed(2),
+        vendorPayoutAmount: vendorPayoutAmount.toFixed(2),
       },
       // customer_email: order.buyer.user.email,
       expires_at: Math.floor(Date.now() / 1000) + 3600, // Expires in 1 hour
@@ -137,6 +300,8 @@ export class PaymentsService {
         stripePaymentId: checkoutSession.id,
         stripeCustomerId: checkoutSession.customer as string | null,
         amount: order.totalAmount,
+        adminCommissionAmount,
+        vendorPayoutAmount,
         status: "pending",
       },
       create: {
@@ -144,6 +309,8 @@ export class PaymentsService {
         stripePaymentId: checkoutSession.id,
         stripeCustomerId: checkoutSession.customer as string | null,
         amount: order.totalAmount,
+        adminCommissionAmount,
+        vendorPayoutAmount,
         status: "pending",
       },
     });
@@ -156,7 +323,9 @@ export class PaymentsService {
       expiresAt: new Date(checkoutSession.expires_at * 1000).toISOString(),
       orderId: order.id,
       orderNumber: order.orderNumber,
-      amount: Number(order.totalAmount),
+      amount: totalAmount,
+      adminCommissionAmount,
+      vendorPayoutAmount,
     };
   }
 
@@ -186,11 +355,22 @@ export class PaymentsService {
     }
 
     // Update payment status
+    const paymentAmount = Number(payment.amount);
+    const commissionRate = this.getCommissionRate();
+    const adminCommissionAmount = this.roundMoney(
+      paymentAmount * commissionRate,
+    );
+    const vendorPayoutAmount = this.roundMoney(
+      paymentAmount - adminCommissionAmount,
+    );
+
     await this.prisma.payment.update({
       where: { id: payment.id },
       data: {
         status: "succeeded",
         stripeCustomerId: session.customer as string | null,
+        adminCommissionAmount,
+        vendorPayoutAmount,
       },
     });
 
@@ -205,17 +385,24 @@ export class PaymentsService {
     if (payment.order?.buyer?.userId) {
       await this.notificationsService.notifyBuyer(payment.order.buyer.userId, {
         title: "Payment succeeded",
-        message: `Payment received for order ${payment.order.orderNumber}.`,
+        message: `Payment received for order ${payment.order.orderNumber}. Amount: $${paymentAmount.toFixed(
+          2,
+        )}.`,
         type: NotificationType.SUCCESS,
       });
     }
 
     if (payment.order?.vendor?.userId) {
-      await this.notificationsService.notifyVendor(payment.order.vendor.userId, {
-        title: "Payment received",
-        message: `Payment received for order ${payment.order.orderNumber}.`,
-        type: NotificationType.SUCCESS,
-      });
+      await this.notificationsService.notifyVendor(
+        payment.order.vendor.userId,
+        {
+          title: "Payment received",
+          message: `Payment received for order ${payment.order.orderNumber}. Payout: $${vendorPayoutAmount.toFixed(
+            2,
+          )}. Admin commission: $${adminCommissionAmount.toFixed(2)}.`,
+          type: NotificationType.SUCCESS,
+        },
+      );
     }
 
     console.log(`Payment succeeded for order: ${orderId}`);
@@ -340,10 +527,49 @@ export class PaymentsService {
         }
         break;
 
+      case "account.updated":
+        const updatedAccount = event.data.object as Stripe.Account;
+        await this.updateVendorStripeAccountStatus(updatedAccount);
+        break;
+
+      case "account.application.deauthorized":
+        const deauthorized = event.data.object as unknown as Stripe.Account;
+        await this.updateVendorStripeAccountStatus(deauthorized, true);
+        break;
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
 
     return { received: true };
+  }
+
+  private async updateVendorStripeAccountStatus(
+    account: Stripe.Account,
+    deauthorized: boolean = false,
+  ) {
+    const chargesEnabled = deauthorized
+      ? false
+      : (account.charges_enabled ?? false);
+    const payoutsEnabled = deauthorized
+      ? false
+      : (account.payouts_enabled ?? false);
+
+    let status = "pending";
+    if (chargesEnabled && payoutsEnabled) {
+      status = "verified";
+    }
+    if (account.requirements?.disabled_reason || deauthorized) {
+      status = "restricted";
+    }
+
+    await this.prisma.vendor.updateMany({
+      where: { stripeAccountId: account.id },
+      data: {
+        stripeChargesEnabled: chargesEnabled,
+        stripePayoutsEnabled: payoutsEnabled,
+        stripeAccountStatus: status,
+      },
+    });
   }
 }
