@@ -131,6 +131,7 @@ export class VendorBuyerConnectionsService {
             businessName: true,
             businessDescription: true,
             logoUrl: true,
+            userId: true,
           },
         },
         buyer: {
@@ -164,18 +165,32 @@ export class VendorBuyerConnectionsService {
       },
       include: {
         buyer: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-              },
-            },
+          select: {
+            id: true,
+            fullName: true,
+            cart: true,
+            userId: true,
           },
+          // include: {
+          //   user: {
+          //     select: {
+          //       id: true,
+          //       email: true,
+          //     },
+          //   },
+          // },
         },
         vendor: {
-          include: {
-            user: true,
+          // include: {
+          //   user: true,
+          // },
+          select: {
+            id: true,
+            vendorCode: true,
+            businessName: true,
+            businessDescription: true,
+            logoUrl: true,
+            userId: true,
           },
         },
       },

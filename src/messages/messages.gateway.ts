@@ -113,7 +113,9 @@ export class MessagesGateway
       const senderId = client.data.userId;
 
       console.log("💾 Creating message in database...");
+      console.log(senderId, "senderId");
       const message = await this.messagesService.create(senderId, data);
+
       console.log("✅ Message created:", message.id);
 
       // Emit to receiver

@@ -20,7 +20,9 @@ export class MessagesService {
         buyer: true,
       },
     });
-
+    if (!sender) {
+      throw new NotFoundException("Sender not found");
+    }
     const receiver = await this.prisma.user.findUnique({
       where: { id: createMessageDto.receiverId },
       include: {
@@ -29,8 +31,10 @@ export class MessagesService {
       },
     });
 
-    if (!sender || !receiver) {
-      throw new NotFoundException("User not found");
+    if (!receiver) {
+      throw new NotFoundException(
+        "Receiver not found " + createMessageDto.receiverId,
+      );
     }
 
     // Verify that sender and receiver are vendor-buyer pairs
