@@ -12,27 +12,51 @@ import { AssignCouponDto } from "./dto/assign-coupon.dto";
 export class CouponsService {
   constructor(private prisma: PrismaService) {}
 
+  private generateCouponCode(discountType: string, discountValue: number) {
+    const typePrefix = discountType === "percentage" ? "PCT" : "FIX";
+    const normalizedValue = Number(discountValue);
+    const valuePart = Number.isInteger(normalizedValue)
+      ? normalizedValue.toString()
+      : normalizedValue.toString().replace(".", "");
+    const randomPart = Math.random().toString(36).slice(2, 6).toUpperCase();
+
+    return `${typePrefix}${valuePart}${randomPart}`;
+  }
+
   async create(vendorId: string, createCouponDto: CreateCouponDto) {
-    // Check if code already exists for this vendor
-    const existingCoupon = await this.prisma.coupon.findUnique({
-      where: {
-        vendorId_code: {
-          vendorId,
-          code: createCouponDto.code,
+    let code = "";
+    let existingCoupon: Awaited<
+      ReturnType<typeof this.prisma.coupon.findUnique>
+    > = null;
+    let attempts = 0;
+
+    do {
+      code = this.generateCouponCode(
+        createCouponDto.discountType,
+        createCouponDto.discountValue,
+      );
+
+      existingCoupon = await this.prisma.coupon.findUnique({
+        where: {
+          vendorId_code: {
+            vendorId,
+            code,
+          },
         },
-      },
-    });
+      });
+
+      attempts += 1;
+    } while (existingCoupon && attempts < 5);
 
     if (existingCoupon) {
-      throw new BadRequestException(
-        "Coupon code already exists for this vendor",
-      );
+      throw new BadRequestException("Could not generate a unique coupon code");
     }
 
     return this.prisma.coupon.create({
       data: {
         ...createCouponDto,
         vendorId,
+        code,
         discountValue: createCouponDto.discountValue,
         validFrom: new Date(createCouponDto.validFrom),
         validUntil: new Date(createCouponDto.validUntil),
