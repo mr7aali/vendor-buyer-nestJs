@@ -281,13 +281,13 @@ model Payment {
 model Coupon {
   id                String                  @id @default(uuid())
   vendorId          String
-  code              String
+  code              String?                 @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
   discountValue     Decimal                 @db.Decimal(10, 2)
   minPurchaseAmount Decimal?                @db.Decimal(10, 2)
   maxDiscountAmount Decimal?                @db.Decimal(10, 2)
-  validFrom         DateTime
+  validFrom         DateTime                @default(now())
   validUntil        DateTime
-  usageLimit        Int?
+  usageLimit        Int?                    @default(1)
   usedCount         Int                     @default(0)
   isActive          Boolean                 @default(true)
   createdAt         DateTime                @default(now())
@@ -296,6 +296,7 @@ model Coupon {
   vendor            Vendor                  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   buyerAssignments  CouponBuyerAssignment[]
   orders            Order[]
+  name              String                  @default("")
 
   @@unique([vendorId, code])
   @@index([vendorId])
