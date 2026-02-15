@@ -109,6 +109,8 @@ export class OrdersService {
         totalAmount,
         status: OrderStatus.PENDING,
         shippingAddress: createOrderDto.shippingAddress,
+        country: createOrderDto.country,
+        optionalAddress: createOrderDto.optionalAddress,
       },
     });
 
