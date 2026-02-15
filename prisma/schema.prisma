@@ -227,6 +227,8 @@ model Order {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   status          String
+  optionalAddress String
+  country         String
   buyer           Buyer           @relation(fields: [buyerId], references: [id], onDelete: Cascade)
   coupon          Coupon?         @relation(fields: [couponId], references: [id])
   vendor          Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
