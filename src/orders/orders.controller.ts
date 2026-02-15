@@ -43,7 +43,8 @@ export class OrdersController {
 
   @Post()
   @Roles(UserType.BUYER)
-  @UseGuards(RolesGuard)
+  // @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard) // Authentication guard MUST come first
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: "Create an order",
