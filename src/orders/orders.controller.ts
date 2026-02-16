@@ -128,6 +128,7 @@ export class OrdersController {
   }
 
   @Get(":id")
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: "Get order by ID",
     description:
@@ -141,6 +142,7 @@ export class OrdersController {
   })
   @ApiResponse({ status: 404, description: "Order not found" })
   async findOne(@Param("id") id: string, @GetUser() user: any) {
+    console.log(user, "user ");
     return this.ordersService.findOne(id, user.id, user.userType);
   }
 
