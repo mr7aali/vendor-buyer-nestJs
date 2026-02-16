@@ -1863,6 +1863,60 @@ export class AuthService {
     };
   }
 
+  async adminResetPassword(resetPasswordDto: ResetPasswordDto) {
+    const otpRecord = await this.prisma.passwordResetOtp.findFirst({
+      where: {
+        email: resetPasswordDto.email,
+        otp: resetPasswordDto.otp,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    if (!otpRecord) {
+      throw new BadRequestException("Invalid OTP");
+    }
+
+    if (new Date() > otpRecord.expiresAt) {
+      await this.prisma.passwordResetOtp.delete({
+        where: { id: otpRecord.id },
+      });
+      throw new BadRequestException(
+        "OTP has expired. Please request a new one",
+      );
+    }
+
+    if (resetPasswordDto.newPassword !== resetPasswordDto.confirmPassword) {
+      throw new BadRequestException("Passwords do not match");
+    }
+
+    const admin = await this.prisma.admin.findUnique({
+      where: { email: resetPasswordDto.email },
+    });
+
+    if (!admin) {
+      throw new NotFoundException("Admin with this email does not exist");
+    }
+
+    const passwordHash = await bcrypt.hash(resetPasswordDto.newPassword, 10);
+
+    await this.prisma.admin.update({
+      where: { email: resetPasswordDto.email },
+      data: { passwordHash },
+    });
+
+    await this.prisma.passwordResetOtp.deleteMany({
+      where: { email: resetPasswordDto.email },
+    });
+
+    return {
+      success: true,
+      message:
+        "Password reset successfully. You can now login with your new password",
+    };
+  }
+
   private async cleanupExpiredOtps() {
     try {
       const result = await this.prisma.passwordResetOtp.deleteMany({

@@ -364,6 +364,12 @@ export class AuthController {
     return this.authService.resetPassword(resetPasswordDto);
   }
 
+  @Post("admin/reset-password")
+  @HttpCode(HttpStatus.OK)
+  async adminResetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return this.authService.adminResetPassword(resetPasswordDto);
+  }
+
   // ==================== PROFILE & USERS ====================
 
   @Get("me")
