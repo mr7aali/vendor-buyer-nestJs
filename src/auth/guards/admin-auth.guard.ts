@@ -21,6 +21,7 @@ export class AdminAuthGuard extends AuthGuard("admin-jwt") {
 
   handleRequest(err: any, admin: any, info: any) {
     // You can throw an exception based on either "info" or "err" arguments
+    console.log(err);
     if (err || !admin) {
       throw err || new UnauthorizedException("Admin authentication required");
     }
