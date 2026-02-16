@@ -74,6 +74,7 @@ export class OrdersController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard) // ✅ ADD THIS
   @ApiOperation({
     summary: "Get all orders",
     description:
@@ -85,6 +86,7 @@ export class OrdersController {
     description: "Buyer or vendor profile not found",
   })
   async findAll(@GetUser() user: any) {
+    console.log(user, "This is order req.");
     if (user.userType === "buyer") {
       const buyer = await this.prisma.buyer.findUnique({
         where: { userId: user.id },
