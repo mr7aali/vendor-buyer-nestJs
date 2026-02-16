@@ -346,6 +346,12 @@ export class AuthController {
     return this.authService.forgotPassword(forgotPasswordDto);
   }
 
+  @Post("admin/forgot-password")
+  @HttpCode(HttpStatus.OK)
+  async adminForgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.adminForgotPassword(forgotPasswordDto);
+  }
+
   @Post("verify-otp")
   @HttpCode(HttpStatus.OK)
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {

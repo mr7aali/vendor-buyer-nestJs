@@ -1741,6 +1741,40 @@ export class AuthService {
     };
   }
 
+  async adminForgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const admin = await this.prisma.admin.findUnique({
+      where: { email: forgotPasswordDto.email },
+    });
+
+    if (!admin) {
+      throw new NotFoundException("Admin with this email does not exist");
+    }
+
+    await this.prisma.passwordResetOtp.deleteMany({
+      where: { email: forgotPasswordDto.email },
+    });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await this.prisma.passwordResetOtp.create({
+      data: {
+        email: forgotPasswordDto.email,
+        otp,
+        expiresAt,
+        verified: false,
+      },
+    });
+
+    await this.emailService.sendOtpEmail(forgotPasswordDto.email, otp);
+
+    return {
+      success: true,
+      message: "OTP sent to your email successfully",
+      email: forgotPasswordDto.email,
+    };
+  }
+
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
     const otpRecord = await this.prisma.passwordResetOtp.findFirst({
       where: {
