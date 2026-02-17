@@ -140,6 +140,7 @@ export class AuthService {
             nidBackPhotoUrl: nidBackUrl.secure_url,
             profilePhotoUrl: profileImage.secure_url,
             gender: data.gender,
+            country: data.country,
           },
         });
 
@@ -229,6 +230,7 @@ export class AuthService {
             bussinessRegNumber: data.bussinessRegNumber,
             gender: data.gender,
             bussinessIdPhotoUrl: businessIdResult?.secure_url || "",
+            country: data.country,
           },
         });
         await this.prisma.user.update({

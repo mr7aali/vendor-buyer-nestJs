@@ -51,6 +51,7 @@ model Buyer {
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
   gender            String
+  country           String
   isNidVerify       Boolean                 @default(false)
   user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   cart              Cart?
@@ -80,7 +81,8 @@ model Vendor {
   nationalIdNumber      String
   nidFontPhotoUrl       String //document
   nidBackPhotoUrl       String //document
-  bussinessIdPhotoUrl   String //document
+  bussinessIdPhotoUrl   String //document 
+  country               String
   isNidVerify           Boolean @default(false)
   bussinessRegNumber    String
   isBussinessIdVerified Boolean @default(false)
