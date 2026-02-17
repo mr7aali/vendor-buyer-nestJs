@@ -17,6 +17,8 @@ export class BuyerRegisterFullDto {
   @IsString()
   nidNumber: string;
 
+  @IsString()
+  country: string;
   // Remove these - we'll upload files instead:
   // nidFontPhotoUrl, nidBackPhotoUrl, profilePhotoUrl
   // password - user is already authenticated via JWT

@@ -140,6 +140,7 @@ export class AuthService {
             nidBackPhotoUrl: nidBackUrl.secure_url,
             profilePhotoUrl: profileImage.secure_url,
             gender: data.gender,
+            country: data.country,
           },
         });
 
@@ -229,6 +230,7 @@ export class AuthService {
             bussinessRegNumber: data.bussinessRegNumber,
             gender: data.gender,
             bussinessIdPhotoUrl: businessIdResult?.secure_url || "",
+            country: data.country,
           },
         });
         await this.prisma.user.update({
@@ -1741,6 +1743,40 @@ export class AuthService {
     };
   }
 
+  async adminForgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const admin = await this.prisma.admin.findUnique({
+      where: { email: forgotPasswordDto.email },
+    });
+
+    if (!admin) {
+      throw new NotFoundException("Admin with this email does not exist");
+    }
+
+    await this.prisma.passwordResetOtp.deleteMany({
+      where: { email: forgotPasswordDto.email },
+    });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await this.prisma.passwordResetOtp.create({
+      data: {
+        email: forgotPasswordDto.email,
+        otp,
+        expiresAt,
+        verified: false,
+      },
+    });
+
+    await this.emailService.sendOtpEmail(forgotPasswordDto.email, otp);
+
+    return {
+      success: true,
+      message: "OTP sent to your email successfully",
+      email: forgotPasswordDto.email,
+    };
+  }
+
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
     const otpRecord = await this.prisma.passwordResetOtp.findFirst({
       where: {
@@ -1814,6 +1850,60 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(resetPasswordDto.newPassword, 10);
 
     await this.prisma.user.update({
+      where: { email: resetPasswordDto.email },
+      data: { passwordHash },
+    });
+
+    await this.prisma.passwordResetOtp.deleteMany({
+      where: { email: resetPasswordDto.email },
+    });
+
+    return {
+      success: true,
+      message:
+        "Password reset successfully. You can now login with your new password",
+    };
+  }
+
+  async adminResetPassword(resetPasswordDto: ResetPasswordDto) {
+    const otpRecord = await this.prisma.passwordResetOtp.findFirst({
+      where: {
+        email: resetPasswordDto.email,
+        otp: resetPasswordDto.otp,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    if (!otpRecord) {
+      throw new BadRequestException("Invalid OTP");
+    }
+
+    if (new Date() > otpRecord.expiresAt) {
+      await this.prisma.passwordResetOtp.delete({
+        where: { id: otpRecord.id },
+      });
+      throw new BadRequestException(
+        "OTP has expired. Please request a new one",
+      );
+    }
+
+    if (resetPasswordDto.newPassword !== resetPasswordDto.confirmPassword) {
+      throw new BadRequestException("Passwords do not match");
+    }
+
+    const admin = await this.prisma.admin.findUnique({
+      where: { email: resetPasswordDto.email },
+    });
+
+    if (!admin) {
+      throw new NotFoundException("Admin with this email does not exist");
+    }
+
+    const passwordHash = await bcrypt.hash(resetPasswordDto.newPassword, 10);
+
+    await this.prisma.admin.update({
       where: { email: resetPasswordDto.email },
       data: { passwordHash },
     });

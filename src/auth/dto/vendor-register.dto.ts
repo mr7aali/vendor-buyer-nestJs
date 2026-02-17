@@ -34,6 +34,8 @@ export class VendorRegisterDto {
   @IsString()
   bussinessRegNumber: string;
 
+  @IsString()
+  country: string;
   // Remove the URL fields - we'll upload files instead
   // logoUrl, nidFontPhotoUrl, nidBackPhotoUrl, bussinessIdPhotoUrl will be uploaded
 }
