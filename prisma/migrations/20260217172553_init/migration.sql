@@ -55,6 +55,7 @@ CREATE TABLE "Buyer" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "gender" TEXT NOT NULL,
+    "country" TEXT NOT NULL,
     "isNidVerify" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Buyer_pkey" PRIMARY KEY ("id")
@@ -78,11 +79,12 @@ CREATE TABLE "Vendor" (
     "nidFontPhotoUrl" TEXT NOT NULL,
     "nidBackPhotoUrl" TEXT NOT NULL,
     "bussinessIdPhotoUrl" TEXT NOT NULL,
+    "country" TEXT NOT NULL,
     "isNidVerify" BOOLEAN NOT NULL DEFAULT false,
     "bussinessRegNumber" TEXT NOT NULL,
     "isBussinessIdVerified" BOOLEAN NOT NULL DEFAULT false,
     "website" TEXT NOT NULL DEFAULT '',
-    "stripeAccountId" TEXT DEFAULT '',
+    "stripeAccountId" TEXT,
     "stripeAccountStatus" TEXT,
     "stripeChargesEnabled" BOOLEAN NOT NULL DEFAULT false,
     "stripePayoutsEnabled" BOOLEAN NOT NULL DEFAULT false,
@@ -204,6 +206,8 @@ CREATE TABLE "Order" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "status" TEXT NOT NULL,
+    "optionalAddress" TEXT NOT NULL,
+    "country" TEXT NOT NULL,
 
     CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
 );
@@ -246,18 +250,19 @@ CREATE TABLE "Payment" (
 CREATE TABLE "Coupon" (
     "id" TEXT NOT NULL,
     "vendorId" TEXT NOT NULL,
-    "code" TEXT NOT NULL,
+    "code" TEXT DEFAULT upper(substr(md5(random()::text), 1, 6)),
     "discountValue" DECIMAL(10,2) NOT NULL,
     "minPurchaseAmount" DECIMAL(10,2),
     "maxDiscountAmount" DECIMAL(10,2),
-    "validFrom" TIMESTAMP(3) NOT NULL,
+    "validFrom" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "validUntil" TIMESTAMP(3) NOT NULL,
-    "usageLimit" INTEGER,
+    "usageLimit" INTEGER DEFAULT 1,
     "usedCount" INTEGER NOT NULL DEFAULT 0,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "discountType" TEXT NOT NULL,
+    "name" TEXT NOT NULL DEFAULT '',
 
     CONSTRAINT "Coupon_pkey" PRIMARY KEY ("id")
 );
@@ -429,9 +434,6 @@ CREATE UNIQUE INDEX "Vendor_userId_key" ON "Vendor"("userId");
 CREATE UNIQUE INDEX "Vendor_vendorCode_key" ON "Vendor"("vendorCode");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Vendor_stripeAccountId_key" ON "Vendor"("stripeAccountId");
-
--- CreateIndex
 CREATE INDEX "Category_vendorId_idx" ON "Category"("vendorId");
 
 -- CreateIndex
@@ -490,6 +492,9 @@ CREATE UNIQUE INDEX "Payment_stripePaymentId_key" ON "Payment"("stripePaymentId"
 
 -- CreateIndex
 CREATE INDEX "Payment_stripePaymentId_idx" ON "Payment"("stripePaymentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Coupon_code_key" ON "Coupon"("code");
 
 -- CreateIndex
 CREATE INDEX "Coupon_vendorId_idx" ON "Coupon"("vendorId");
