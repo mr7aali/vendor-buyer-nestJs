@@ -1,0 +1,61 @@
+{
+  "info": {
+    "name": "Transaction History API",
+    "_postman_id": "c1cf5c0f-transaction-history-collection",
+    "description": "Buyer, Vendor, and Admin transaction history endpoints with pagination and search.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3000" },
+    { "key": "buyer_token", "value": "" },
+    { "key": "vendor_token", "value": "" },
+    { "key": "admin_token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Buyer - Transaction History",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{buyer_token}}", "type": "string" }
+          ]
+        },
+        "url": "{{base_url}}/transaction-history/buyer?page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+        "description": "Buyer JWT required. Returns only logged-in buyer transactions."
+      }
+    },
+    {
+      "name": "Vendor - Transaction History",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{vendor_token}}", "type": "string" }
+          ]
+        },
+        "url": "{{base_url}}/transaction-history/vendor?page=1&limit=10&search=ORD&status=succeeded&sortBy=amount&sortOrder=asc",
+        "description": "Vendor JWT required. Returns only logged-in vendor transactions."
+      }
+    },
+    {
+      "name": "Admin - Transaction History",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{admin_token}}", "type": "string" }
+          ]
+        },
+        "url": "{{base_url}}/transaction-history/admin?page=1&limit=10&buyerId=&vendorId=&search=&status=&orderStatus=&paymentMethod=&startDate=&endDate=&minAmount=&maxAmount=&sortBy=createdAt&sortOrder=desc",
+        "description": "Admin JWT required + permission: transactions.view (or SUPER_ADMIN)."
+      }
+    }
+  ]
+}

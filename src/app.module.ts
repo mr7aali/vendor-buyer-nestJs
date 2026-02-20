@@ -19,6 +19,7 @@ import { ReviewModule } from "./prisma/review.module.js";
 import { AdminDashboardModule } from "./dashboard/dashboard.module.js";
 import { AnalyticsModule } from "./analytics/analytics.module.js";
 import { ChattingWithAdminModule } from "./chatting-with-admin/chatting-with-admin.module.js";
+import { TransactionHistoryModule } from "./transaction-history/transaction-history.module.js";
 // import { MessagesGateway } from "./messages/messages.gateway.js";
 
 @Module({
@@ -43,6 +44,7 @@ import { ChattingWithAdminModule } from "./chatting-with-admin/chatting-with-adm
     AdminDashboardModule,
     AnalyticsModule,
     ChattingWithAdminModule,
+    TransactionHistoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
