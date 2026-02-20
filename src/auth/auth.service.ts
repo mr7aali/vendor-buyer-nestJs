@@ -1946,6 +1946,216 @@ export class AuthService {
   async getAllVendor() {
     return await this.prisma.vendor.findMany({});
   }
+
+  async getUserVendorStatistics({
+    id,
+    userType,
+  }: {
+    id: string;
+    email: string;
+    userType: "vendor" | "buyer" | "user";
+  }) {
+    const normalizedUserType = String(userType || "").toLowerCase();
+    const activeOrderStatuses = [
+      OrderStatus.PENDING,
+      OrderStatus.PROCESSING,
+      OrderStatus.SHIPPED,
+      OrderStatus.OUT_FOR_DELIVERED,
+    ];
+
+    if (normalizedUserType === "vendor") {
+      const vendor = await this.prisma.vendor.findUnique({
+        where: { userId: id },
+        select: { id: true },
+      });
+
+      if (!vendor) {
+        throw new NotFoundException("Vendor profile not found");
+      }
+
+      const periodDays = 30;
+      const currentPeriodStart = new Date();
+      currentPeriodStart.setDate(currentPeriodStart.getDate() - periodDays);
+
+      const previousPeriodStart = new Date(currentPeriodStart);
+      previousPeriodStart.setDate(previousPeriodStart.getDate() - periodDays);
+
+      const [
+        totalSalesAggregate,
+        currentSalesAggregate,
+        previousSalesAggregate,
+        totalActiveOrders,
+        currentActiveOrders,
+        previousActiveOrders,
+        totalProducts,
+        currentProducts,
+        previousProducts,
+        clientStatsRaw,
+      ] = await Promise.all([
+        this.prisma.order.aggregate({
+          where: {
+            vendorId: vendor.id,
+            status: OrderStatus.DELIVERED,
+          },
+          _sum: { totalAmount: true },
+        }),
+        this.prisma.order.aggregate({
+          where: {
+            vendorId: vendor.id,
+            status: OrderStatus.DELIVERED,
+            createdAt: { gte: currentPeriodStart },
+          },
+          _sum: { totalAmount: true },
+        }),
+        this.prisma.order.aggregate({
+          where: {
+            vendorId: vendor.id,
+            status: OrderStatus.DELIVERED,
+            createdAt: { gte: previousPeriodStart, lt: currentPeriodStart },
+          },
+          _sum: { totalAmount: true },
+        }),
+        this.prisma.order.count({
+          where: {
+            vendorId: vendor.id,
+            status: { in: activeOrderStatuses },
+          },
+        }),
+        this.prisma.order.count({
+          where: {
+            vendorId: vendor.id,
+            status: { in: activeOrderStatuses },
+            createdAt: { gte: currentPeriodStart },
+          },
+        }),
+        this.prisma.order.count({
+          where: {
+            vendorId: vendor.id,
+            status: { in: activeOrderStatuses },
+            createdAt: { gte: previousPeriodStart, lt: currentPeriodStart },
+          },
+        }),
+        this.prisma.product.count({
+          where: {
+            vendorId: vendor.id,
+          },
+        }),
+        this.prisma.product.count({
+          where: {
+            vendorId: vendor.id,
+            createdAt: { gte: currentPeriodStart },
+          },
+        }),
+        this.prisma.product.count({
+          where: {
+            vendorId: vendor.id,
+            createdAt: { gte: previousPeriodStart, lt: currentPeriodStart },
+          },
+        }),
+        this.prisma.$queryRaw<
+          Array<{
+            total_clients: number;
+            current_new_clients: number;
+            previous_new_clients: number;
+          }>
+        >`
+          WITH first_orders AS (
+            SELECT "buyerId", MIN("createdAt") AS first_order_at
+            FROM "Order"
+            WHERE "vendorId" = ${vendor.id}
+            GROUP BY "buyerId"
+          )
+          SELECT
+            COUNT(*)::int AS total_clients,
+            COUNT(*) FILTER (WHERE first_order_at >= ${currentPeriodStart})::int AS current_new_clients,
+            COUNT(*) FILTER (WHERE first_order_at >= ${previousPeriodStart} AND first_order_at < ${currentPeriodStart})::int AS previous_new_clients
+          FROM first_orders
+        `,
+      ]);
+
+      const totalSales = Number(totalSalesAggregate._sum.totalAmount || 0);
+      const currentSales = Number(currentSalesAggregate._sum.totalAmount || 0);
+      const previousSales = Number(
+        previousSalesAggregate._sum.totalAmount || 0,
+      );
+
+      const clientStats = clientStatsRaw[0] || {
+        total_clients: 0,
+        current_new_clients: 0,
+        previous_new_clients: 0,
+      };
+
+      return {
+        role: "vendor",
+        periodDays,
+        totalSales: {
+          value: totalSales,
+          growth: this.calculateGrowth(currentSales, previousSales),
+        },
+        activeOrders: {
+          value: totalActiveOrders,
+          growth: this.calculateGrowth(currentActiveOrders, previousActiveOrders),
+        },
+        products: {
+          value: totalProducts,
+          growth: this.calculateGrowth(currentProducts, previousProducts),
+        },
+        newClients: {
+          value: Number(clientStats.total_clients || 0),
+          growth: this.calculateGrowth(
+            Number(clientStats.current_new_clients || 0),
+            Number(clientStats.previous_new_clients || 0),
+          ),
+        },
+      };
+    }
+
+    if (normalizedUserType === "buyer") {
+      const buyer = await this.prisma.buyer.findUnique({
+        where: { userId: id },
+        select: { id: true },
+      });
+
+      if (!buyer) {
+        throw new NotFoundException("Buyer profile not found");
+      }
+
+      const [activeOrders, completedOrders] = await Promise.all([
+        this.prisma.order.count({
+          where: {
+            buyerId: buyer.id,
+            status: { in: activeOrderStatuses },
+          },
+        }),
+        this.prisma.order.count({
+          where: {
+            buyerId: buyer.id,
+            status: OrderStatus.DELIVERED,
+          },
+        }),
+      ]);
+
+      return {
+        role: "buyer",
+        activeOrders,
+        completedOrders,
+      };
+    }
+
+    throw new ForbiddenException(
+      "Statistics are only available for vendor and buyer accounts",
+    );
+  }
+
+  private calculateGrowth(current: number, previous: number): number {
+    if (previous === 0) {
+      return current > 0 ? 100 : 0;
+    }
+
+    const growth = ((current - previous) / previous) * 100;
+    return Number(growth.toFixed(2));
+  }
+
   async getProfile({
     email,
     id,

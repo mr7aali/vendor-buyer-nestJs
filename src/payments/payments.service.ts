@@ -129,7 +129,7 @@ export class PaymentsService {
       return_url: this.getConnectReturnUrl(),
       type: "account_onboarding",
     });
-
+    console.log(accountLink);
     return { url: accountLink.url, expiresAt: accountLink.expires_at };
   }
 
@@ -474,6 +474,7 @@ export class PaymentsService {
     const webhookSecret = this.configService.get<string>(
       "STRIPE_WEBHOOK_SECRET",
     );
+    console.log("ERROR:Webhook called ", signature, payload.toString());
     console.log(signature, payload);
     if (!webhookSecret) {
       throw new Error("STRIPE_WEBHOOK_SECRET is not configured");
@@ -548,6 +549,7 @@ export class PaymentsService {
     account: Stripe.Account,
     deauthorized: boolean = false,
   ) {
+    console.log(account);
     const chargesEnabled = deauthorized
       ? false
       : (account.charges_enabled ?? false);

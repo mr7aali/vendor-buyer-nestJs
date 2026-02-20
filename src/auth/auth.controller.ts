@@ -424,4 +424,16 @@ export class AuthController {
     console.log(query);
     return this.authService.getAllVendors(query);
   }
+  @UseGuards(JwtAuthGuard)
+  @Get("user-vendor-statistics")
+  async getUserVendorStatistics(
+    @GetUser()
+    user: {
+      id: string;
+      email: string;
+      userType: "vendor" | "buyer" | "user";
+    },
+  ) {
+    return this.authService.getUserVendorStatistics(user);
+  }
 }
