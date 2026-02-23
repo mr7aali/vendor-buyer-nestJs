@@ -33,7 +33,11 @@ import { OrderStatus } from "src/orders/dto/update-order-status.dto";
 import { UpdateVendorDto } from "./dto/update-vendor.dto";
 import { NotificationsService } from "../notifications/notifications.service";
 import { NotificationType } from "../notifications/dto/create-notification.dto";
+import { OAuth2Client } from "google-auth-library";
+import { GoogleAuthDto, AppleAuthDto } from "./dto/social-auth.dto";
+import * as AppleAuth from "apple-auth";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
+
 
 @Injectable()
 export class AuthService {
@@ -812,6 +816,13 @@ export class AuthService {
 
     if (!user) {
       throw new UnauthorizedException("Invalid credentials");
+    }
+
+    // Social auth users don't have a password
+    if (!user.passwordHash) {
+      throw new UnauthorizedException(
+        "This account uses social login. Please sign in with Google or Apple.",
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -2819,5 +2830,242 @@ export class AuthService {
         hasPrevPage,
       },
     };
+  }
+  // ==================== SOCIAL AUTH ====================
+
+  /**
+   * Shared helper: find-or-create a User by social provider, then issue tokens.
+   * If the email already exists (local account), the provider ID is linked.
+   */
+  private async socialAuthLogin(opts: {
+    provider: "google" | "apple";
+    providerId: string;
+    email: string;
+    displayName?: string;
+    avatarUrl?: string;
+    evanAddress?: string;
+  }) {
+    const { provider, providerId, email, displayName, avatarUrl, evanAddress } =
+      opts;
+    const providerField = provider === "google" ? "googleId" : "appleId";
+
+    // 1. Find by provider ID (returning user)
+    let user = await this.prisma.user.findFirst({
+      where: { [providerField]: providerId },
+      include: { buyer: true, vendor: true },
+    });
+
+    if (!user) {
+      // 2. Find by email (link provider to existing local account)
+      const existingByEmail = await this.prisma.user.findUnique({
+        where: { email },
+        include: { buyer: true, vendor: true },
+      });
+
+      if (existingByEmail) {
+        // Link provider to existing account
+        user = await this.prisma.user.update({
+          where: { id: existingByEmail.id },
+          data: {
+            [providerField]: providerId,
+            authProvider: provider,
+            displayName: displayName ?? existingByEmail.displayName,
+            avatarUrl: avatarUrl ?? existingByEmail.avatarUrl,
+          },
+          include: { buyer: true, vendor: true },
+        });
+      } else {
+        // 3. Create new social user (no passwordHash — social login only)
+        user = await this.prisma.user.create({
+          data: {
+            email,
+            [providerField]: providerId,
+            authProvider: provider,
+            userType: UserType.USER,
+            displayName: displayName ?? null,
+            avatarUrl: avatarUrl ?? null,
+            evanAddress: evanAddress ?? "",
+          },
+          include: { buyer: true, vendor: true },
+        });
+      }
+    }
+
+    // Issue JWT access + refresh tokens
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      userType: user.userType,
+    };
+
+    const accessToken = this.jwtService.sign(payload, {
+      secret:
+        this.configService.get<string>("JWT_ACCESS_SECRET") || "bangladesh_1971",
+      expiresIn: "15m",
+    });
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret:
+        this.configService.get<string>("JWT_REFRESH_SECRET") ||
+        "bangladesh_1971_refresh",
+      expiresIn: "7d",
+    });
+
+    // Store hashed refresh token
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    await this.prisma.refreshToken.create({
+      data: {
+        tokenHash: refreshTokenHash,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    // Return same shape as regular login
+    if (user.userType === UserType.BUYER && user.buyer) {
+      return {
+        accessToken,
+        refreshToken,
+        isNewUser: false,
+        user: {
+          id: user.buyer.id,
+          email: user.email,
+          userType: user.userType,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+          authProvider: user.authProvider,
+        },
+      };
+    } else if (user.userType === UserType.VENDOR && user.vendor) {
+      return {
+        accessToken,
+        refreshToken,
+        isNewUser: false,
+        user: {
+          id: user.vendor.id,
+          email: user.email,
+          userType: user.userType,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+          authProvider: user.authProvider,
+        },
+      };
+    } else {
+      return {
+        accessToken,
+        refreshToken,
+        isNewUser: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          userType: user.userType,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+          authProvider: user.authProvider,
+        },
+      };
+    }
+  }
+
+  /**
+   * Verify Google ID token and authenticate the user.
+   * The mobile app signs in with Google and sends the resulting idToken here.
+   */
+  async googleLogin(dto: GoogleAuthDto) {
+    const clientId = this.configService.get<string>("GOOGLE_CLIENT_ID");
+    if (!clientId) {
+      throw new BadRequestException(
+        "Google OAuth is not configured on this server.",
+      );
+    }
+
+    const client = new OAuth2Client(clientId);
+
+    let ticket;
+    try {
+      ticket = await client.verifyIdToken({
+        idToken: dto.idToken,
+        audience: clientId,
+      });
+    } catch {
+      throw new UnauthorizedException(
+        "Invalid or expired Google token. Please sign in again.",
+      );
+    }
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.sub || !payload.email) {
+      throw new UnauthorizedException("Google token payload is invalid.");
+    }
+
+    if (!payload.email_verified) {
+      throw new UnauthorizedException(
+        "Google account email is not verified. Please verify your Google email first.",
+      );
+    }
+
+    return this.socialAuthLogin({
+      provider: "google",
+      providerId: payload.sub,
+      email: payload.email,
+      displayName: payload.name,
+      avatarUrl: payload.picture,
+      evanAddress: dto.evanAddress,
+    });
+  }
+
+  /**
+   * Verify Apple identity token and authenticate the user.
+   * The mobile app signs in with Apple and sends the resulting identityToken here.
+   */
+  async appleLogin(dto: AppleAuthDto) {
+    const clientId = this.configService.get<string>("APPLE_CLIENT_ID");
+    const teamId = this.configService.get<string>("APPLE_TEAM_ID");
+    const keyId = this.configService.get<string>("APPLE_KEY_ID");
+    const privateKey = this.configService.get<string>("APPLE_PRIVATE_KEY");
+
+    if (!clientId || !teamId || !keyId || !privateKey) {
+      throw new BadRequestException(
+        "Apple Sign In is not configured on this server.",
+      );
+    }
+
+    const auth = new (AppleAuth as any)({
+      client_id: clientId,
+      team_id: teamId,
+      key_id: keyId,
+      private_key: privateKey.replace(/\\n/g, "\n"),
+      scope: "name email",
+    });
+
+    let appleUser: { sub: string; email: string };
+    try {
+      appleUser = await auth.accessToken(dto.authorizationCode);
+    } catch {
+      // Fallback: verify the identity token directly
+      try {
+        appleUser = await auth.verifyIdToken(dto.identityToken, {
+          audience: clientId,
+          ignoreExpiration: false,
+        });
+      } catch {
+        throw new UnauthorizedException(
+          "Invalid or expired Apple token. Please sign in again.",
+        );
+      }
+    }
+
+    if (!appleUser?.sub || !appleUser?.email) {
+      throw new UnauthorizedException("Apple token payload is invalid.");
+    }
+
+    // Apple only provides fullName on the very first sign-in
+    return this.socialAuthLogin({
+      provider: "apple",
+      providerId: appleUser.sub,
+      email: appleUser.email,
+      displayName: dto.fullName ?? undefined,
+      evanAddress: dto.evanAddress,
+    });
   }
 }
