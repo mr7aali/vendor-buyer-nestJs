@@ -1,5 +1,12 @@
 // DTOs
-import { IsString, IsOptional, IsEnum, IsEmail } from "class-validator";
+import { Type } from "class-transformer";
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsEmail,
+  ValidateNested,
+} from "class-validator";
 
 export class UpdateUserDto {
   @IsOptional()
@@ -97,11 +104,18 @@ export class UpdateVendorProfileDto {
 
 export class UpdateProfileDto {
   @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateUserDto)
   user?: UpdateUserDto;
 
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateBuyerProfileDto)
   @IsOptional()
   buyer?: UpdateBuyerProfileDto;
 
   @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateVendorProfileDto)
   vendor?: UpdateVendorProfileDto;
 }
