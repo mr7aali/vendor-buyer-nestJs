@@ -48,9 +48,11 @@ import { UpdateVendorDto } from "./dto/update-vendor.dto";
 import { UpdateAdminProfileDto } from "./dto/update-admin-profile.dto";
 import { ChangeAdminPasswordDto } from "./dto/change-admin-password.dto";
 import { UpdateBuyerDto } from "./dto/update-buyer.dto";
+import { GoogleAuthDto, AppleAuthDto } from "./dto/social-auth.dto";
 // import { UpdateProfileDto } from "./dto/update.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 // import { UpdateEmployeePermissionsDto } from "./dto/update-employee-permissions.dto";
+
 
 @Controller("auth")
 export class AuthController {
@@ -435,5 +437,29 @@ export class AuthController {
     },
   ) {
     return this.authService.getUserVendorStatistics(user);
+  }
+
+  // ==================== SOCIAL AUTH ====================
+
+  /**
+   * POST /auth/google
+   * React Native sends the Google idToken obtained from @react-native-google-signin/google-signin.
+   * Returns { accessToken, refreshToken, isNewUser, user }.
+   */
+  @Post("google")
+  @HttpCode(HttpStatus.OK)
+  async googleLogin(@Body() dto: GoogleAuthDto) {
+    return this.authService.googleLogin(dto);
+  }
+
+  /**
+   * POST /auth/apple
+   * React Native sends the Apple identityToken + authorizationCode from react-native-apple-authentication.
+   * Returns { accessToken, refreshToken, isNewUser, user }.
+   */
+  @Post("apple")
+  @HttpCode(HttpStatus.OK)
+  async appleLogin(@Body() dto: AppleAuthDto) {
+    return this.authService.appleLogin(dto);
   }
 }

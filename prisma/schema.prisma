@@ -13,11 +13,17 @@ model User {
   id               String         @id @default(uuid())
   email            String         @unique
   index            Int            @unique @default(autoincrement())
-  passwordHash     String
+  passwordHash     String?        // null for social auth users
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   userType         String
   evanAddress      String         @default("")
+  // Social auth fields
+  googleId         String?        @unique
+  appleId          String?        @unique
+  authProvider     String         @default("local") // "local" | "google" | "apple"
+  displayName      String?
+  avatarUrl        String?
   buyer            Buyer?
   receivedMessages Message[]      @relation("ReceivedMessages")
   sentMessages     Message[]      @relation("SentMessages")

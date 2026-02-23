@@ -148,7 +148,7 @@ export class OrdersController {
 
   @Patch(":id/status")
   @Roles(UserType.VENDOR)
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
     summary: "Update order status",
     description:
