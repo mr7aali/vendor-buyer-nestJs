@@ -30,6 +30,7 @@ model User {
   notifications    Notification[]
   vendor           Vendor?
   refreshTokens    RefreshToken[]
+  fcmTokens        FcmToken[]
 
   @@map("user")
 }
@@ -363,6 +364,16 @@ model Notification {
   @@unique([broadcastId, userId])
   @@index([userId])
   @@index([broadcastId])
+}
+
+model FcmToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum NotificationType {

@@ -34,7 +34,7 @@ export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   @Post()
   @Roles(UserType.VENDOR)
@@ -70,9 +70,10 @@ export class ProductsController {
     @Body() dto: CreateSpecificatonDto,
     @GetUser() user: any,
   ) {
-    const vendorId = user?.id;
-
-    return this.productsService.specificationCreate(dto, vendorId);
+    const userId = user?.id;
+    console.log(user, "user")
+    console.log(userId, "specificationid");
+    return this.productsService.specificationCreate(dto, userId);
   }
 
   @Get("vendor/:vendorId")
