@@ -215,8 +215,10 @@ export class ProductsService {
             id: true,
             businessName: true,
             vendorCode: true,
+
           },
         },
+        specifications: true
       },
     });
 
