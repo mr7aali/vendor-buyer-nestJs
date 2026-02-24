@@ -38,7 +38,7 @@ import {
   CreateEmployeeDto,
   UpdateEmployeePermissionsDto,
 } from "./dto/Employee.dto";
-import type {
+import {
   UpdateProfileDto,
   UpdateVendorProfileDto,
 } from "./dto/update.dto";
@@ -56,7 +56,7 @@ import { GoogleAuthDto, AppleAuthDto } from "./dto/social-auth.dto";
 
 @Controller("auth")
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   // ==================== USER REGISTRATION ====================
 
