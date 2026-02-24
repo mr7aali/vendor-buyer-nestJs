@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import { ServiceAccount } from 'firebase-admin';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class FirebaseService implements OnModuleInit {
@@ -8,20 +10,37 @@ export class FirebaseService implements OnModuleInit {
     private messaging: admin.messaging.Messaging | null = null;
 
     onModuleInit() {
-        const encoded = process.env.FIREBASE_SERVICE_ACCOUNT;
-
-        if (!encoded) {
-            this.logger.warn(
-                'FIREBASE_SERVICE_ACCOUNT is not set – push notifications are disabled.',
-            );
-            return;
-        }
-
         try {
-            const decoded = Buffer.from(encoded, 'base64').toString('utf-8');
-            const serviceAccount: ServiceAccount = JSON.parse(decoded);
+            let serviceAccount: ServiceAccount | null = null;
 
-            // Only initialise once (guard against module hot-reload)
+            // Strategy 1: load from a JSON credentials file on disk (preferred)
+            const credFilePath = path.resolve(
+                process.cwd(),
+                'firebase-service-account.json',
+            );
+            if (fs.existsSync(credFilePath)) {
+                const raw = fs.readFileSync(credFilePath, 'utf-8');
+                serviceAccount = JSON.parse(raw) as ServiceAccount;
+            }
+
+            // Strategy 2: fall back to base64-encoded env var
+            if (!serviceAccount) {
+                const encoded = process.env.FIREBASE_SERVICE_ACCOUNT;
+                if (encoded) {
+                    const decoded = Buffer.from(encoded, 'base64').toString('utf-8');
+                    serviceAccount = JSON.parse(decoded) as ServiceAccount;
+                }
+            }
+
+            if (!serviceAccount) {
+                this.logger.warn(
+                    'No Firebase credentials found (firebase-service-account.json or ' +
+                    'FIREBASE_SERVICE_ACCOUNT env var). Push notifications are disabled.',
+                );
+                return;
+            }
+
+            // Only initialise once (guard against hot-reload)
             if (!admin.apps.length) {
                 admin.initializeApp({
                     credential: admin.credential.cert(serviceAccount),
@@ -37,8 +56,7 @@ export class FirebaseService implements OnModuleInit {
 
     /**
      * Send a push notification to one or more FCM device tokens.
-     * Returns the list of tokens that have been invalidated (expired / unregistered)
-     * so the caller can remove them from the database.
+     * Returns the list of invalid tokens that should be deleted from the DB.
      */
     async sendToTokens(
         tokens: string[],
