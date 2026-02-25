@@ -1,24 +1,64 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { randomUUID } from "crypto";
-import { PrismaService } from "../prisma/prisma.service";
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateNotificationDto,
   NotificationCategory,
   NotificationType,
-} from "./dto/create-notification.dto";
+} from './dto/create-notification.dto';
 import {
   BroadcastNotificationDto,
   BroadcastTarget,
-} from "./dto/broadcast-notification.dto";
-import { UserType } from "../auth/dto/register.dto";
-import { NotificationsGateway } from "./notifications.gateway";
+} from './dto/broadcast-notification.dto';
+import { UserType } from '../auth/dto/register.dto';
+import { NotificationsGateway } from './notifications.gateway';
+import { FirebaseService } from './firebase.service';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     private prisma: PrismaService,
     private notificationsGateway: NotificationsGateway,
-  ) {}
+    private firebaseService: FirebaseService,
+  ) { }
+
+  // ─── FCM Token Management ────────────────────────────────────────────────────
+
+  async registerFcmToken(userId: string, token: string) {
+    return this.prisma.fcmToken.upsert({
+      where: { token },
+      update: { userId },
+      create: { userId, token },
+    });
+  }
+
+  async removeFcmToken(userId: string, token: string) {
+    const existing = await this.prisma.fcmToken.findUnique({
+      where: { token },
+    });
+    if (!existing || existing.userId !== userId) {
+      return { success: false };
+    }
+    await this.prisma.fcmToken.delete({ where: { token } });
+    return { success: true };
+  }
+
+  private async getUserFcmTokens(userId: string): Promise<string[]> {
+    const rows = await this.prisma.fcmToken.findMany({
+      where: { userId },
+      select: { token: true },
+    });
+    return rows.map((r) => r.token);
+  }
+
+  private async pruneInvalidTokens(tokens: string[]) {
+    if (tokens.length === 0) return;
+    await this.prisma.fcmToken.deleteMany({
+      where: { token: { in: tokens } },
+    });
+  }
+
+  // ─── Core Notification Methods ───────────────────────────────────────────────
 
   async create(createNotificationDto: CreateNotificationDto) {
     const notification = await this.prisma.notification.create({
@@ -28,10 +68,19 @@ export class NotificationsService {
           createNotificationDto.category ?? NotificationCategory.SYSTEM,
       },
     });
-    this.notificationsGateway.emitToUser(
-      notification.userId,
-      notification,
+
+    // Emit via WebSocket
+    this.notificationsGateway.emitToUser(notification.userId, notification);
+
+    // Send FCM push notification
+    const tokens = await this.getUserFcmTokens(notification.userId);
+    const invalid = await this.firebaseService.sendToTokens(
+      tokens,
+      notification.title,
+      notification.message,
     );
+    await this.pruneInvalidTokens(invalid);
+
     return notification;
   }
 
@@ -67,7 +116,7 @@ export class NotificationsService {
         userId: user.id,
         title: dto.title,
         message: dto.message,
-        type: dto.type ?? "info",
+        type: dto.type ?? 'info',
         category,
         broadcastId,
       })),
@@ -77,15 +126,29 @@ export class NotificationsService {
     const broadcastPayload = {
       title: dto.title,
       message: dto.message,
-      type: dto.type ?? "info",
+      type: dto.type ?? 'info',
       category,
       broadcastId,
       createdAt: new Date().toISOString(),
     };
 
-    users.forEach((user) => {
-      this.notificationsGateway.emitToUser(user.id, broadcastPayload);
+    // Emit via WebSocket + collect FCM tokens for all users
+    const userIds = users.map((u) => u.id);
+    userIds.forEach((id) => {
+      this.notificationsGateway.emitToUser(id, broadcastPayload);
     });
+
+    const fcmRows = await this.prisma.fcmToken.findMany({
+      where: { userId: { in: userIds } },
+      select: { token: true },
+    });
+    const allTokens = fcmRows.map((r) => r.token);
+    const invalid = await this.firebaseService.sendToTokens(
+      allTokens,
+      dto.title,
+      dto.message,
+    );
+    await this.pruneInvalidTokens(invalid);
 
     return { count: result.count };
   }
@@ -131,14 +194,14 @@ export class NotificationsService {
 
   async findAll() {
     return this.prisma.notification.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
   async findAllByUser(userId: string) {
     return this.prisma.notification.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -147,7 +210,7 @@ export class NotificationsService {
       where: {
         isRead: false,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -157,7 +220,7 @@ export class NotificationsService {
         userId,
         isRead: false,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -193,7 +256,7 @@ export class NotificationsService {
   async listBroadcastRecipients(broadcastId: string) {
     return this.prisma.notification.findMany({
       where: { broadcastId },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
     });
   }
 

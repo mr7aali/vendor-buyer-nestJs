@@ -18,7 +18,7 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private readonly cloudinaryService: CloudinaryService,
-  ) {}
+  ) { }
 
   private normalize(text: string, length: number) {
     return text
@@ -137,20 +137,39 @@ export class ProductsService {
       );
     }
   }
-  async specificationCreate(dto: CreateSpecificatonDto, vendorId: string) {
+  async specificationCreate(dto: CreateSpecificatonDto, userId: string) {
     const product = await this.prisma.product.findUnique({
       where: { id: dto.productId },
-      select: { id: true, vendorId: true },
+      select: { id: true, vendorId: true, },
     });
 
     if (!product) {
       throw new NotFoundException("Product not found");
     }
 
-    if (product.vendorId !== vendorId) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { id: product.vendorId },
+      select: { userId: true }
+    });
+
+    if (!vendor) {
+      throw new NotFoundException("Vendor not found");
+    }
+
+    if (vendor.userId !== userId) {
       throw new ForbiddenException(
         "You are not allowed to add specification to this product",
       );
+    }
+
+    const specification = await this.prisma.specification.findMany({
+      where: { productId: dto.productId, label: dto.label },
+      select: { id: true, label: true },
+    });
+    console.log("specification", specification)
+
+    if (specification.length > 0) {
+      throw new BadRequestException("Specification already exists");
     }
 
     return this.prisma.specification.create({
@@ -196,8 +215,10 @@ export class ProductsService {
             id: true,
             businessName: true,
             vendorCode: true,
+
           },
         },
+        specifications: true
       },
     });
 
