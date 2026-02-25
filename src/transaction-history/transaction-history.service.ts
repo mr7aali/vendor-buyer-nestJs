@@ -64,6 +64,84 @@ export class TransactionHistoryService {
     return this.getPaginatedTransactions(where, query);
   }
 
+  async getAdminTransactionDetails(transactionId: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: transactionId },
+      include: {
+        order: {
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            shippingAddress: true,
+            optionalAddress: true,
+            country: true,
+            subtotal: true,
+            discountAmount: true,
+            totalAmount: true,
+            buyer: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+            vendor: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+                storename: true,
+                businessName: true,
+                vendorCode: true,
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException("Transaction not found");
+    }
+
+    return {
+      id: payment.id,
+      stripePaymentId: payment.stripePaymentId,
+      stripeCustomerId: payment.stripeCustomerId,
+      amount: Number(payment.amount),
+      adminCommissionAmount: Number(payment.adminCommissionAmount),
+      vendorPayoutAmount: Number(payment.vendorPayoutAmount),
+      status: payment.status,
+      paymentMethod: payment.paymentMethod,
+      cardBrand: payment.cardBrand,
+      lastFourDigits: payment.lastFourDigits,
+      expiresAt: payment.expiresAt,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      order: {
+        ...payment.order,
+        subtotal: Number(payment.order.subtotal),
+        discountAmount: Number(payment.order.discountAmount),
+        totalAmount: Number(payment.order.totalAmount),
+      },
+    };
+  }
+
   private buildWhereClause(
     query: TransactionHistoryQueryDto,
     scope: { buyerId?: string; vendorId?: string },
@@ -136,6 +214,12 @@ export class TransactionHistoryService {
     if (query.search) {
       andConditions.push({
         OR: [
+          {
+            id: {
+              contains: query.search,
+              mode: "insensitive",
+            },
+          },
           {
             stripePaymentId: {
               contains: query.search,
@@ -282,6 +366,7 @@ export class TransactionHistoryService {
                 select: {
                   id: true,
                   fullName: true,
+                  phone: true,
                   storename: true,
                   businessName: true,
                   vendorCode: true,

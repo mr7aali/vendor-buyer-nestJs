@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from "@nestjs/common";
+import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
 import { Permissions } from "../auth/decorators/permissions.decorator";
 import { GetUser } from "../auth/decorators/get-user.decorator";
 import { Roles } from "../auth/decorators/roles.decorator";
@@ -50,5 +50,12 @@ export class TransactionHistoryController {
     @Query() query: AdminTransactionHistoryQueryDto,
   ) {
     return this.transactionHistoryService.getAdminTransactionHistory(query);
+  }
+
+  @Get("admin/:id")
+  @UseGuards(AdminAuthGuard, PermissionGuard)
+  @Permissions("transactions.view")
+  async getAdminTransactionDetails(@Param("id") id: string) {
+    return this.transactionHistoryService.getAdminTransactionDetails(id);
   }
 }

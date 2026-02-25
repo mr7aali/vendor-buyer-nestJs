@@ -38,7 +38,6 @@ import { GoogleAuthDto, AppleAuthDto } from "./dto/social-auth.dto";
 import * as AppleAuth from "apple-auth";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -868,7 +867,7 @@ export class AuthService {
       };
     }
   }
-  //1px solid red
+
   async adminLogin(dto: AdminLoginDto) {
     const admin = await this.prisma.admin.findUnique({
       where: { email: dto.email },
@@ -2105,7 +2104,10 @@ export class AuthService {
         },
         activeOrders: {
           value: totalActiveOrders,
-          growth: this.calculateGrowth(currentActiveOrders, previousActiveOrders),
+          growth: this.calculateGrowth(
+            currentActiveOrders,
+            previousActiveOrders,
+          ),
         },
         products: {
           value: totalProducts,
@@ -2900,7 +2902,8 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload, {
       secret:
-        this.configService.get<string>("JWT_ACCESS_SECRET") || "bangladesh_1971",
+        this.configService.get<string>("JWT_ACCESS_SECRET") ||
+        "bangladesh_1971",
       expiresIn: "15m",
     });
 
