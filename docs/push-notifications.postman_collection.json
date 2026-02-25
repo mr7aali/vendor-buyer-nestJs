@@ -1,0 +1,370 @@
+{
+  "info": {
+    "_postman_id": "push-notification-tests",
+    "name": "Push Notifications – Test Collection",
+    "description": "End-to-end tests for Firebase FCM push notification endpoints and all events that trigger notifications.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",    "value": "http://localhost:3000", "type": "string" },
+    { "key": "user_jwt",    "value": "",                      "type": "string", "description": "JWT of a user (buyer or vendor). Set after login." },
+    { "key": "admin_jwt",   "value": "",                      "type": "string", "description": "JWT of an admin. Set after admin login." },
+    { "key": "fcm_token",   "value": "test-fcm-token-abc123", "type": "string", "description": "A placeholder FCM device token for testing registration." },
+    { "key": "notif_id",    "value": "",                      "type": "string", "description": "Notification ID – set from a GET response." },
+    { "key": "user_id",     "value": "",                      "type": "string", "description": "User ID – set after login." }
+  ],
+  "item": [
+    {
+      "name": "0 – Auth (get tokens)",
+      "item": [
+        {
+          "name": "Login as User (Buyer/Vendor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.accessToken) { pm.collectionVariables.set('user_jwt', res.accessToken); }",
+                  "if (res.user && res.user.id) { pm.collectionVariables.set('user_id', res.user.id); }",
+                  "pm.test('Login OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"your-user@example.com\",\n  \"password\": \"yourpassword\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.accessToken) { pm.collectionVariables.set('admin_jwt', res.accessToken); }",
+                  "pm.test('Admin Login OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/auth/admin/login", "host": ["{{base_url}}"], "path": ["auth", "admin", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"adminpassword\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 – FCM Token Management",
+      "item": [
+        {
+          "name": "Register FCM Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('FCM token registered (201)', () => pm.response.to.have.status(201));",
+                  "pm.test('Response has token field', () => {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.token).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": { "raw": "{{base_url}}/notifications/fcm-token", "host": ["{{base_url}}"], "path": ["notifications", "fcm-token"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{fcm_token}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Remove FCM Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('FCM token removed (200)', () => pm.response.to.have.status(200));",
+                  "pm.test('success flag is true', () => {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_jwt}}" }
+            ],
+            "url": { "raw": "{{base_url}}/notifications/fcm-token", "host": ["{{base_url}}"], "path": ["notifications", "fcm-token"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{fcm_token}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 – Trigger Notifications (Admin)",
+      "description": "These requests trigger both a DB notification AND an FCM push to registered devices.",
+      "item": [
+        {
+          "name": "Create Notification (single user)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Notification created (201)', () => pm.response.to.have.status(201));",
+                  "var body = pm.response.json();",
+                  "if (body.id) { pm.collectionVariables.set('notif_id', body.id); }",
+                  "pm.test('Has id and title', () => { pm.expect(body.id).to.exist; pm.expect(body.title).to.exist; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_jwt}}" }
+            ],
+            "url": { "raw": "{{base_url}}/notifications", "host": ["{{base_url}}"], "path": ["notifications"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{user_id}}\",\n  \"title\": \"Test Push\",\n  \"message\": \"This is a test push notification.\",\n  \"type\": \"info\",\n  \"category\": \"system\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Broadcast to ALL users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Broadcast sent (201)', () => pm.response.to.have.status(201));",
+                  "pm.test('Has count', () => pm.expect(pm.response.json().count).to.be.a('number'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_jwt}}" }
+            ],
+            "url": { "raw": "{{base_url}}/notifications/broadcast", "host": ["{{base_url}}"], "path": ["notifications", "broadcast"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target\": \"all\",\n  \"title\": \"🚀 Test Broadcast\",\n  \"message\": \"This is a broadcast push notification test.\",\n  \"type\": \"info\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Broadcast to BUYERS only",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_jwt}}" }
+            ],
+            "url": { "raw": "{{base_url}}/notifications/broadcast", "host": ["{{base_url}}"], "path": ["notifications", "broadcast"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target\": \"buyers\",\n  \"title\": \"Buyers Promo\",\n  \"message\": \"Special deal just for buyers!\",\n  \"type\": \"success\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Broadcast to VENDORS only",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_jwt}}" }
+            ],
+            "url": { "raw": "{{base_url}}/notifications/broadcast", "host": ["{{base_url}}"], "path": ["notifications", "broadcast"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target\": \"vendors\",\n  \"title\": \"Vendor Update\",\n  \"message\": \"New policy update for all vendors.\",\n  \"type\": \"warning\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 – Read My Notifications (User)",
+      "item": [
+        {
+          "name": "GET /notifications/me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Is array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "var arr = pm.response.json();",
+                  "if (arr.length > 0) { pm.collectionVariables.set('notif_id', arr[0].id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_jwt}}" }],
+            "url": { "raw": "{{base_url}}/notifications/me", "host": ["{{base_url}}"], "path": ["notifications", "me"] }
+          }
+        },
+        {
+          "name": "GET /notifications/me/unread",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('All are unread', () => {",
+                  "  pm.response.json().forEach(n => pm.expect(n.isRead).to.be.false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_jwt}}" }],
+            "url": { "raw": "{{base_url}}/notifications/me/unread", "host": ["{{base_url}}"], "path": ["notifications", "me", "unread"] }
+          }
+        },
+        {
+          "name": "PATCH /notifications/me/:id/read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('isRead is true', () => pm.expect(pm.response.json().isRead).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_jwt}}" }],
+            "url": { "raw": "{{base_url}}/notifications/me/{{notif_id}}/read", "host": ["{{base_url}}"], "path": ["notifications", "me", "{{notif_id}}", "read"] }
+          }
+        },
+        {
+          "name": "PATCH /notifications/me/read-all",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_jwt}}" }],
+            "url": { "raw": "{{base_url}}/notifications/me/read-all", "host": ["{{base_url}}"], "path": ["notifications", "me", "read-all"] }
+          }
+        },
+        {
+          "name": "DELETE /notifications/me/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_jwt}}" }],
+            "url": { "raw": "{{base_url}}/notifications/me/{{notif_id}}", "host": ["{{base_url}}"], "path": ["notifications", "me", "{{notif_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 – Admin Notification Views",
+      "item": [
+        {
+          "name": "GET /notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_jwt}}" }],
+            "url": { "raw": "{{base_url}}/notifications", "host": ["{{base_url}}"], "path": ["notifications"] }
+          }
+        },
+        {
+          "name": "GET /notifications/unread",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_jwt}}" }],
+            "url": { "raw": "{{base_url}}/notifications/unread", "host": ["{{base_url}}"], "path": ["notifications", "unread"] }
+          }
+        },
+        {
+          "name": "GET /notifications/broadcasts",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_jwt}}" }],
+            "url": { "raw": "{{base_url}}/notifications/broadcasts", "host": ["{{base_url}}"], "path": ["notifications", "broadcasts"] }
+          }
+        },
+        {
+          "name": "PATCH /notifications/:id/read (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_jwt}}" }],
+            "url": { "raw": "{{base_url}}/notifications/{{notif_id}}/read", "host": ["{{base_url}}"], "path": ["notifications", "{{notif_id}}", "read"] }
+          }
+        },
+        {
+          "name": "PATCH /notifications/read-all (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_jwt}}" }],
+            "url": { "raw": "{{base_url}}/notifications/read-all", "host": ["{{base_url}}"], "path": ["notifications", "read-all"] }
+          }
+        },
+        {
+          "name": "DELETE /notifications/:id (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_jwt}}" }],
+            "url": { "raw": "{{base_url}}/notifications/{{notif_id}}", "host": ["{{base_url}}"], "path": ["notifications", "{{notif_id}}"] }
+          }
+        }
+      ]
+    }
+  ]
+}
