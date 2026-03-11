@@ -35,6 +35,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { NotificationType } from "../notifications/dto/create-notification.dto";
 import { OAuth2Client } from "google-auth-library";
 import { GoogleAuthDto, AppleAuthDto } from "./dto/social-auth.dto";
+import { SwitchProfileRole } from "./dto/switch-profile.dto";
 import * as AppleAuth from "apple-auth";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 
@@ -844,6 +845,10 @@ export class AuthService {
           email: user.email,
           userType: user.userType,
         },
+        availableProfiles: {
+          buyer: Boolean(user.buyer),
+          vendor: Boolean(user.vendor),
+        },
       };
     } else if (user.vendor && user.userType === UserType.VENDOR) {
       return {
@@ -853,6 +858,10 @@ export class AuthService {
           id: user.vendor.id,
           email: user.email,
           userType: user.userType,
+        },
+        availableProfiles: {
+          buyer: Boolean(user.buyer),
+          vendor: Boolean(user.vendor),
         },
       };
     } else {
@@ -864,8 +873,69 @@ export class AuthService {
           email: user.email,
           userType: user.userType,
         },
+        availableProfiles: {
+          buyer: Boolean(user.buyer),
+          vendor: Boolean(user.vendor),
+        },
       };
     }
+  }
+
+  async switchProfile(userId: string, targetRole: SwitchProfileRole) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        buyer: true,
+        vendor: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException("User not found.");
+    }
+
+    if (targetRole === SwitchProfileRole.BUYER && !user.buyer) {
+      throw new BadRequestException(
+        "Buyer profile is not available. Please complete buyer registration first.",
+      );
+    }
+
+    if (targetRole === SwitchProfileRole.VENDOR && !user.vendor) {
+      throw new BadRequestException(
+        "Vendor profile is not available. Please complete vendor registration first.",
+      );
+    }
+
+    if (user.userType !== targetRole) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { userType: targetRole },
+      });
+    }
+
+    const { accessToken, refreshToken } = await this.generateTokens({
+      id: user.id,
+      email: user.email,
+      userType: targetRole,
+    });
+    await this.storeRefreshToken(user.id, refreshToken);
+
+    const activeProfileId =
+      targetRole === SwitchProfileRole.BUYER ? user.buyer!.id : user.vendor!.id;
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: activeProfileId,
+        email: user.email,
+        userType: targetRole,
+      },
+      availableProfiles: {
+        buyer: Boolean(user.buyer),
+        vendor: Boolean(user.vendor),
+      },
+    };
   }
 
   async adminLogin(dto: AdminLoginDto) {
@@ -2938,6 +3008,10 @@ export class AuthService {
           avatarUrl: user.avatarUrl,
           authProvider: user.authProvider,
         },
+        availableProfiles: {
+          buyer: Boolean(user.buyer),
+          vendor: Boolean(user.vendor),
+        },
       };
     } else if (user.userType === UserType.VENDOR && user.vendor) {
       return {
@@ -2952,6 +3026,10 @@ export class AuthService {
           avatarUrl: user.avatarUrl,
           authProvider: user.authProvider,
         },
+        availableProfiles: {
+          buyer: Boolean(user.buyer),
+          vendor: Boolean(user.vendor),
+        },
       };
     } else {
       return {
@@ -2965,6 +3043,10 @@ export class AuthService {
           displayName: user.displayName,
           avatarUrl: user.avatarUrl,
           authProvider: user.authProvider,
+        },
+        availableProfiles: {
+          buyer: Boolean(user.buyer),
+          vendor: Boolean(user.vendor),
         },
       };
     }
