@@ -3,63 +3,343 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  InternalServerErrorException,
+  Logger,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateMessageDto } from "./dto/create-message.dto";
+import { Prisma } from "../../generated/prisma/client";
+
+type AutoMessageType = "ORDER_PLACED" | "ORDER_UPDATED";
+
+interface CreateAutoMessageInput {
+  senderId: string;
+  receiverId: string;
+  messageText: string;
+  type: AutoMessageType;
+  orderId: string;
+  metadata: Prisma.InputJsonValue;
+}
 
 @Injectable()
 export class MessagesService {
+  private readonly logger = new Logger(MessagesService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async create(senderId: string, createMessageDto: CreateMessageDto) {
-    // Get sender and receiver
-    const sender = await this.prisma.user.findUnique({
-      where: { id: senderId },
-      include: {
-        vendor: true,
-        buyer: true,
-      },
-    });
-    if (!sender) {
-      throw new NotFoundException("Sender not found");
+    try {
+      return await this.createMessage({
+        senderId,
+        receiverId: createMessageDto.receiverId,
+        messageText: createMessageDto.messageText,
+        type: "TEXT",
+      });
+    } catch (error) {
+      this.handleError("create message", error);
     }
-    const receiver = await this.prisma.user.findUnique({
-      where: { id: createMessageDto.receiverId },
-      include: {
-        vendor: true,
-        buyer: true,
-      },
-    });
+  }
 
-    if (!receiver) {
-      throw new NotFoundException(
-        "Receiver not found " + createMessageDto.receiverId,
-      );
+  async createAutoMessage(input: CreateAutoMessageInput) {
+    try {
+      return await this.createMessage({
+        senderId: input.senderId,
+        receiverId: input.receiverId,
+        messageText: input.messageText,
+        type: input.type,
+        orderId: input.orderId,
+        metadata: input.metadata,
+      });
+    } catch (error) {
+      this.handleError("create auto message", error);
     }
+  }
 
-    // Verify that sender and receiver are vendor-buyer pairs
-    if (sender.userType === receiver.userType) {
-      throw new BadRequestException(
-        "Messages can only be sent between vendors and buyers",
-      );
+  async getConversations(userId: string) {
+    try {
+      const messages = await this.prisma.message.findMany({
+        where: {
+          OR: [{ senderId: userId }, { receiverId: userId }],
+        },
+        include: this.getMessageInclude(),
+        orderBy: { createdAt: "desc" },
+      });
+
+      const conversations = new Map<
+        string,
+        {
+          conversationId: string | null;
+          partnerId: string;
+          partner: any;
+          lastMessage: any;
+          unreadCount: number;
+        }
+      >();
+
+      for (const message of messages) {
+        const partnerId =
+          message.senderId === userId ? message.receiverId : message.senderId;
+        const partner =
+          message.senderId === userId ? message.receiver : message.sender;
+        const conversationKey =
+          message.vendorId && message.buyerId
+            ? `${message.vendorId}:${message.buyerId}`
+            : [userId, partnerId].sort().join(":");
+
+        if (!conversations.has(conversationKey)) {
+          let conversationId = message.conversationId;
+
+          if (!conversationId && message.vendorId && message.buyerId) {
+            const conversation = await this.getOrCreateConversation(
+              message.vendorId,
+              message.buyerId,
+            );
+            conversationId = conversation.id;
+          }
+
+          conversations.set(conversationKey, {
+            conversationId,
+            partnerId,
+            partner,
+            lastMessage: message,
+            unreadCount: 0,
+          });
+        }
+
+        if (message.receiverId === userId && !message.isRead) {
+          const current = conversations.get(conversationKey);
+          if (current) {
+            current.unreadCount += 1;
+          }
+        }
+      }
+
+      const uniqueConversationIds = Array.from(conversations.values())
+        .map((conversation) => conversation.conversationId)
+        .filter((id): id is string => Boolean(id));
+
+      const pinnedMap = new Map<string, any>();
+      if (uniqueConversationIds.length > 0) {
+        const pinnedConversations = await this.prisma.conversation.findMany({
+          where: {
+            id: {
+              in: uniqueConversationIds,
+            },
+          },
+          include: {
+            pinnedMessage: {
+              include: this.getMessageInclude(),
+            },
+          },
+        });
+
+        for (const conversation of pinnedConversations) {
+          pinnedMap.set(conversation.id, conversation.pinnedMessage);
+        }
+      }
+
+      return Array.from(conversations.values()).map((conversation) => ({
+        ...conversation,
+        pinnedMessage: conversation.conversationId
+          ? pinnedMap.get(conversation.conversationId) ?? null
+          : null,
+      }));
+    } catch (error) {
+      this.handleError("get conversations", error);
     }
+  }
 
-    let vendorId: string | null = null;
-    let buyerId: string | null = null;
+  async getMessages(userId: string, partnerId: string) {
+    try {
+      const messages = await this.prisma.message.findMany({
+        where: {
+          OR: [
+            { senderId: userId, receiverId: partnerId },
+            { senderId: partnerId, receiverId: userId },
+          ],
+        },
+        include: this.getMessageInclude(),
+        orderBy: { createdAt: "asc" },
+      });
 
-    if (sender.userType === "vendor") {
-      vendorId = sender.vendor?.id || null;
-      buyerId = receiver.buyer?.id || null;
-    } else {
-      vendorId = receiver.vendor?.id || null;
-      buyerId = sender.buyer?.id || null;
+      await this.prisma.message.updateMany({
+        where: {
+          senderId: partnerId,
+          receiverId: userId,
+          isRead: false,
+        },
+        data: { isRead: true },
+      });
+
+      return messages;
+    } catch (error) {
+      this.handleError("get messages", error);
     }
+  }
 
-    if (!vendorId || !buyerId) {
-      throw new BadRequestException("Invalid vendor-buyer relationship");
+  async markAsRead(messageId: string, userId: string) {
+    try {
+      const message = await this.prisma.message.findUnique({
+        where: { id: messageId },
+      });
+
+      if (!message) {
+        throw new NotFoundException("Message not found");
+      }
+
+      if (message.receiverId !== userId) {
+        throw new ForbiddenException("You cannot mark this message as read");
+      }
+
+      return await this.prisma.message.update({
+        where: { id: messageId },
+        data: { isRead: true },
+      });
+    } catch (error) {
+      this.handleError("mark message as read", error);
     }
+  }
 
-    // Verify connection
+  async pinMessage(messageId: string, conversationId: string) {
+    try {
+      const message = await this.prisma.message.findUnique({
+        where: { id: messageId },
+        select: {
+          id: true,
+          conversationId: true,
+          type: true,
+          orderId: true,
+        },
+      });
+
+      if (!message) {
+        throw new NotFoundException("Message not found");
+      }
+
+      if (message.conversationId !== conversationId) {
+        throw new BadRequestException(
+          "Message does not belong to the conversation",
+        );
+      }
+
+      if (message.type !== "ORDER_PLACED" && message.type !== "ORDER_UPDATED") {
+        throw new BadRequestException("Only order messages can be pinned");
+      }
+
+      if (message.orderId) {
+        const order = await this.prisma.order.findUnique({
+          where: { id: message.orderId },
+          select: { status: true },
+        });
+
+        if (
+          order &&
+          (order.status === "delivered" || order.status === "cancelled")
+        ) {
+          throw new BadRequestException(
+            "Completed or cancelled order messages cannot be pinned",
+          );
+        }
+      }
+
+      const existingConversation = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { id: true },
+      });
+
+      if (!existingConversation) {
+        throw new NotFoundException("Conversation not found");
+      }
+
+      return await this.prisma.conversation.update({
+        where: { id: conversationId },
+        data: {
+          pinnedMessageId: messageId,
+          updatedAt: new Date(),
+        },
+        include: this.getConversationWithPinnedMessageInclude(),
+      });
+    } catch (error) {
+      this.handleError("pin message", error);
+    }
+  }
+
+  async getPinnedMessage(userId: string, conversationId: string) {
+    try {
+      const conversation = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        include: this.getConversationWithPinnedMessageInclude(),
+      });
+
+      if (!conversation) {
+        throw new NotFoundException("Conversation not found");
+      }
+
+      this.validateConversationAccess(userId, conversation);
+      return conversation.pinnedMessage;
+    } catch (error) {
+      this.handleError("get pinned message", error);
+    }
+  }
+
+  async getConversationParticipants(conversationId: string) {
+    try {
+      const conversation = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        include: this.getConversationWithPinnedMessageInclude(),
+      });
+
+      if (!conversation) {
+        throw new NotFoundException("Conversation not found");
+      }
+
+      return conversation;
+    } catch (error) {
+      this.handleError("get conversation participants", error);
+    }
+  }
+
+  async unpinMessageByOrderId(orderId: string) {
+    try {
+      const conversation = await this.prisma.conversation.findFirst({
+        where: {
+          pinnedMessage: {
+            orderId,
+          },
+        },
+        include: this.getConversationWithPinnedMessageInclude(),
+      });
+
+      if (!conversation) {
+        return null;
+      }
+
+      return await this.prisma.conversation.update({
+        where: { id: conversation.id },
+        data: {
+          pinnedMessageId: null,
+          updatedAt: new Date(),
+        },
+        include: this.getConversationWithPinnedMessageInclude(),
+      });
+    } catch (error) {
+      this.handleError("unpin order message", error);
+    }
+  }
+
+  private async createMessage(input: {
+    senderId: string;
+    receiverId: string;
+    messageText: string;
+    type: string;
+    orderId?: string;
+    metadata?: Prisma.InputJsonValue;
+  }) {
+    const { vendorId, buyerId } = await this.resolveParticipants(
+      input.senderId,
+      input.receiverId,
+    );
+
     const connection = await this.prisma.vendorBuyerConnection.findUnique({
       where: {
         vendorId_buyerId: {
@@ -73,147 +353,169 @@ export class MessagesService {
       throw new ForbiddenException("You are not connected to this user");
     }
 
-    return this.prisma.message.create({
+    const conversation = await this.getOrCreateConversation(vendorId, buyerId);
+
+    const message = await this.prisma.message.create({
       data: {
-        senderId,
-        receiverId: createMessageDto.receiverId,
+        senderId: input.senderId,
+        receiverId: input.receiverId,
         vendorId,
         buyerId,
-        messageText: createMessageDto.messageText,
+        conversationId: conversation.id,
+        messageText: input.messageText,
+        type: input.type,
+        orderId: input.orderId ?? null,
+        metadata: input.metadata,
       },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            email: true,
-            // fullName: true,
-            userType: true,
-          },
+      include: this.getMessageInclude(),
+    });
+
+    await this.prisma.conversation.update({
+      where: { id: conversation.id },
+      data: {
+        updatedAt: new Date(),
+      },
+    });
+
+    return message;
+  }
+
+  private async resolveParticipants(senderId: string, receiverId: string) {
+    const [sender, receiver] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: senderId },
+        include: {
+          vendor: true,
+          buyer: true,
         },
-        receiver: {
-          select: {
-            id: true,
-            email: true,
-            // fullName: true,
-            userType: true,
-          },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: receiverId },
+        include: {
+          vendor: true,
+          buyer: true,
+        },
+      }),
+    ]);
+
+    if (!sender) {
+      throw new NotFoundException("Sender not found");
+    }
+
+    if (!receiver) {
+      throw new NotFoundException("Receiver not found");
+    }
+
+    if (sender.userType === receiver.userType) {
+      throw new BadRequestException(
+        "Messages can only be sent between vendors and buyers",
+      );
+    }
+
+    const vendorId =
+      sender.userType === "vendor" ? sender.vendor?.id : receiver.vendor?.id;
+    const buyerId =
+      sender.userType === "buyer" ? sender.buyer?.id : receiver.buyer?.id;
+
+    if (!vendorId || !buyerId) {
+      throw new BadRequestException("Invalid vendor-buyer relationship");
+    }
+
+    return { vendorId, buyerId };
+  }
+
+  private async getOrCreateConversation(vendorId: string, buyerId: string) {
+    return this.prisma.conversation.upsert({
+      where: {
+        vendorId_buyerId: {
+          vendorId,
+          buyerId,
         },
       },
+      create: {
+        vendorId,
+        buyerId,
+      },
+      update: {},
     });
   }
 
-  async getConversations(userId: string) {
-    // Get all messages where user is sender or receiver
-    const messages = await this.prisma.message.findMany({
-      where: {
-        OR: [{ senderId: userId }, { receiverId: userId }],
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            email: true,
-            // fullName: true,
-            userType: true,
-          },
-        },
-        receiver: {
-          select: {
-            id: true,
-            email: true,
-
-            userType: true,
-          },
+  private getMessageInclude() {
+    return {
+      sender: {
+        select: {
+          id: true,
+          email: true,
+          userType: true,
         },
       },
-      orderBy: { createdAt: "desc" },
-    });
-
-    // Group by conversation partner
-    const conversations = new Map<string, any>();
-
-    for (const message of messages) {
-      const partnerId =
-        message.senderId === userId ? message.receiverId : message.senderId;
-      const partner =
-        message.senderId === userId ? message.receiver : message.sender;
-
-      if (!conversations.has(partnerId)) {
-        conversations.set(partnerId, {
-          partnerId,
-          partner,
-          lastMessage: message,
-          unreadCount: 0,
-        });
-      }
-
-      const conversation = conversations.get(partnerId);
-      if (message.receiverId === userId && !message.isRead) {
-        conversation.unreadCount++;
-      }
-    }
-
-    return Array.from(conversations.values());
+      receiver: {
+        select: {
+          id: true,
+          email: true,
+          userType: true,
+        },
+      },
+    };
   }
 
-  async getMessages(userId: string, partnerId: string) {
-    const messages = await this.prisma.message.findMany({
-      where: {
-        OR: [
-          { senderId: userId, receiverId: partnerId },
-          { senderId: partnerId, receiverId: userId },
-        ],
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            email: true,
-
-            userType: true,
-          },
-        },
-        receiver: {
-          select: {
-            id: true,
-            email: true,
-
-            userType: true,
+  private getConversationWithPinnedMessageInclude() {
+    return {
+      buyer: {
+        select: {
+          id: true,
+          userId: true,
+          fullName: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              userType: true,
+            },
           },
         },
       },
-      orderBy: { createdAt: "asc" },
-    });
-
-    // Mark messages as read
-    await this.prisma.message.updateMany({
-      where: {
-        senderId: partnerId,
-        receiverId: userId,
-        isRead: false,
+      vendor: {
+        select: {
+          id: true,
+          userId: true,
+          businessName: true,
+          storename: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              userType: true,
+            },
+          },
+        },
       },
-      data: { isRead: true },
-    });
-
-    return messages;
+      pinnedMessage: {
+        include: this.getMessageInclude(),
+      },
+    };
   }
 
-  async markAsRead(messageId: string, userId: string) {
-    const message = await this.prisma.message.findUnique({
-      where: { id: messageId },
-    });
+  private validateConversationAccess(userId: string, conversation: any) {
+    if (
+      conversation.buyer.userId !== userId &&
+      conversation.vendor.userId !== userId
+    ) {
+      throw new ForbiddenException("You do not have access to this conversation");
+    }
+  }
 
-    if (!message) {
-      throw new NotFoundException("Message not found");
+  private handleError(action: string, error: unknown): never {
+    if (
+      error instanceof NotFoundException ||
+      error instanceof ForbiddenException ||
+      error instanceof BadRequestException
+    ) {
+      throw error;
     }
 
-    if (message.receiverId !== userId) {
-      throw new ForbiddenException("You cannot mark this message as read");
-    }
-
-    return this.prisma.message.update({
-      where: { id: messageId },
-      data: { isRead: true },
-    });
+    const message = error instanceof Error ? error.stack : String(error);
+    this.logger.error(`Failed to ${action}`, message);
+    throw new InternalServerErrorException(`Failed to ${action}`);
   }
 }

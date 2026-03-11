@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  InternalServerErrorException,
+  Logger,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateOrderDto } from "./dto/create-order.dto";
@@ -10,220 +12,231 @@ import {
   UpdateOrderStatusDto,
   OrderStatus,
 } from "./dto/update-order-status.dto";
-import { v4 as uuidv4 } from "uuid";
 import { GetOrdersFilterDto } from "./dto/get-orders-filter.dto";
 // import { Prisma } from "@prisma/client"; // Incorrect import
 import { Prisma } from "../../generated/prisma/client";
 import { NotificationsService } from "../notifications/notifications.service";
 import { NotificationType } from "../notifications/dto/create-notification.dto";
+import { MessagesService } from "../messages/messages.service";
+import { MessagesGateway } from "../messages/messages.gateway";
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
+    private messagesService: MessagesService,
+    private messagesGateway: MessagesGateway,
   ) {}
 
   async create(buyerId: string, createOrderDto: CreateOrderDto) {
-    // Verify connection
-    const connection = await this.prisma.vendorBuyerConnection.findUnique({
-      where: {
-        vendorId_buyerId: {
-          vendorId: createOrderDto.vendorId,
-          buyerId,
-        },
-      },
-    });
+    return this.createOrder(buyerId, createOrderDto);
+  }
 
-    if (!connection || !connection.isActive) {
-      throw new ForbiddenException("You are not connected to this vendor");
-    }
-
-    // Get cart
-    const cart = await this.prisma.cart.findUnique({
-      where: { buyerId },
-      include: {
-        items: {
-          include: {
-            product: {
-              include: {
-                vendor: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!cart || cart.items.length === 0) {
-      throw new BadRequestException("Cart is empty");
-    }
-
-    // Filter items by vendor
-    const vendorItems = cart.items.filter(
-      (item) => item.product.vendorId === createOrderDto.vendorId,
-    );
-
-    if (vendorItems.length === 0) {
-      throw new BadRequestException("No items from this vendor in cart");
-    }
-
-    // Calculate totals
-    let subtotal = 0;
-    for (const item of vendorItems) {
-      if (item.product.stockQuantity < item.quantity) {
-        throw new BadRequestException(
-          `Insufficient stock for ${item.product.name}`,
-        );
-      }
-      subtotal += Number(item.priceAtAddition) * item.quantity;
-    }
-
-    // Apply coupon if provided
-    let discountAmount = 0;
-    let couponId: string | null = null;
-    if (createOrderDto.couponCode) {
-      const coupon = await this.applyCoupon(
-        createOrderDto.couponCode,
-        createOrderDto.vendorId,
-        buyerId,
-        subtotal,
-      );
-      if (coupon) {
-        discountAmount = coupon.discount;
-        couponId = coupon.couponId;
-      }
-    }
-
-    const totalAmount = subtotal - discountAmount;
-
-    // Create order
-    const orderNumber = this.generateOrderNumber();
-    const order = await this.prisma.order.create({
-      data: {
-        buyerId,
-        vendorId: createOrderDto.vendorId,
-        orderNumber,
-        subtotal,
-        discountAmount,
-        totalAmount,
-        status: OrderStatus.PENDING,
-        shippingAddress: createOrderDto.shippingAddress,
-        country: createOrderDto.country,
-        optionalAddress: createOrderDto.optionalAddress,
-      },
-    });
-
-    const [buyer, vendor] = await Promise.all([
-      this.prisma.buyer.findUnique({
-        where: { id: buyerId },
-        select: { userId: true, fullName: true },
-      }),
-      this.prisma.vendor.findUnique({
-        where: { id: createOrderDto.vendorId },
-        select: { userId: true, storename: true, businessName: true },
-      }),
-    ]);
-
-    if (buyer?.userId) {
-      await this.notificationsService.notifyBuyer(buyer.userId, {
-        title: "Order created",
-        message: `Your order ${orderNumber} has been placed successfully.`,
-        type: NotificationType.SUCCESS,
-      });
-    }
-
-    if (vendor?.userId) {
-      await this.notificationsService.notifyVendor(vendor.userId, {
-        title: "New order received",
-        message: `You received a new order ${orderNumber}.`,
-        type: NotificationType.INFO,
-      });
-    }
-
-    // Create order items and update stock
-    for (const item of vendorItems) {
-      const unitPrice = Number(item.priceAtAddition);
-      const totalPrice = unitPrice * item.quantity;
-
-      await this.prisma.orderItem.create({
-        data: {
-          orderId: order.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          unitPrice,
-          totalPrice,
-        },
-      });
-
-      // Update stock
-      await this.prisma.product.update({
-        where: { id: item.productId },
-        data: {
-          stockQuantity: {
-            decrement: item.quantity,
-          },
-        },
-      });
-    }
-
-    // Remove items from cart
-    await this.prisma.cartItem.deleteMany({
-      where: {
-        cartId: cart.id,
-        productId: {
-          in: vendorItems.map((item) => item.productId),
-        },
-      },
-    });
-
-    // Mark coupon as used if applicable
-    if (couponId) {
-      const assignment = await this.prisma.couponBuyerAssignment.findUnique({
+  async createOrder(buyerId: string, createOrderDto: CreateOrderDto) {
+    try {
+      const connection = await this.prisma.vendorBuyerConnection.findUnique({
         where: {
-          couponId_buyerId: {
-            couponId,
+          vendorId_buyerId: {
+            vendorId: createOrderDto.vendorId,
             buyerId,
           },
         },
       });
 
-      if (assignment) {
-        await this.prisma.couponBuyerAssignment.update({
-          where: { id: assignment.id },
+      if (!connection || !connection.isActive) {
+        throw new ForbiddenException("You are not connected to this vendor");
+      }
+
+      const cart = await this.prisma.cart.findUnique({
+        where: { buyerId },
+        include: {
+          items: {
+            include: {
+              product: {
+                include: {
+                  vendor: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!cart || cart.items.length === 0) {
+        throw new BadRequestException("Cart is empty");
+      }
+
+      const vendorItems = cart.items.filter(
+        (item) => item.product.vendorId === createOrderDto.vendorId,
+      );
+
+      if (vendorItems.length === 0) {
+        throw new BadRequestException("No items from this vendor in cart");
+      }
+
+      let subtotal = 0;
+      for (const item of vendorItems) {
+        if (item.product.stockQuantity < item.quantity) {
+          throw new BadRequestException(
+            `Insufficient stock for ${item.product.name}`,
+          );
+        }
+        subtotal += Number(item.priceAtAddition) * item.quantity;
+      }
+
+      let discountAmount = 0;
+      let couponId: string | null = null;
+      if (createOrderDto.couponCode) {
+        const coupon = await this.applyCoupon(
+          createOrderDto.couponCode,
+          createOrderDto.vendorId,
+          buyerId,
+          subtotal,
+        );
+        if (coupon) {
+          discountAmount = coupon.discount;
+          couponId = coupon.couponId;
+        }
+      }
+
+      const totalAmount = subtotal - discountAmount;
+      const orderNumber = this.generateOrderNumber();
+      const order = await this.prisma.order.create({
+        data: {
+          buyerId,
+          vendorId: createOrderDto.vendorId,
+          orderNumber,
+          subtotal,
+          discountAmount,
+          totalAmount,
+          status: OrderStatus.PENDING,
+          shippingAddress: createOrderDto.shippingAddress,
+          country: createOrderDto.country,
+          optionalAddress: createOrderDto.optionalAddress,
+        },
+      });
+
+      const [buyer, vendor] = await Promise.all([
+        this.prisma.buyer.findUnique({
+          where: { id: buyerId },
+          select: { userId: true, fullName: true },
+        }),
+        this.prisma.vendor.findUnique({
+          where: { id: createOrderDto.vendorId },
+          select: { userId: true, storename: true, businessName: true },
+        }),
+      ]);
+
+      if (buyer?.userId) {
+        await this.notificationsService.notifyBuyer(buyer.userId, {
+          title: "Order created",
+          message: `Your order ${orderNumber} has been placed successfully.`,
+          type: NotificationType.SUCCESS,
+        });
+      }
+
+      if (vendor?.userId) {
+        await this.notificationsService.notifyVendor(vendor.userId, {
+          title: "New order received",
+          message: `You received a new order ${orderNumber}.`,
+          type: NotificationType.INFO,
+        });
+      }
+
+      for (const item of vendorItems) {
+        const unitPrice = Number(item.priceAtAddition);
+        const totalPrice = unitPrice * item.quantity;
+
+        await this.prisma.orderItem.create({
           data: {
-            isUsed: true,
-            usedAt: new Date(),
+            orderId: order.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            unitPrice,
+            totalPrice,
           },
         });
 
-        await this.prisma.coupon.update({
-          where: { id: couponId },
+        await this.prisma.product.update({
+          where: { id: item.productId },
           data: {
-            usedCount: {
-              increment: 1,
+            stockQuantity: {
+              decrement: item.quantity,
             },
           },
         });
       }
-    }
 
-    return this.prisma.order.findUnique({
-      where: { id: order.id },
-      include: {
-        items: {
-          include: {
-            product: true,
+      await this.prisma.cartItem.deleteMany({
+        where: {
+          cartId: cart.id,
+          productId: {
+            in: vendorItems.map((item) => item.productId),
           },
         },
-        vendor: {
-          select: {
-            id: true,
-            businessName: true,
+      });
+
+      if (couponId) {
+        const assignment = await this.prisma.couponBuyerAssignment.findUnique({
+          where: {
+            couponId_buyerId: {
+              couponId,
+              buyerId,
+            },
+          },
+        });
+
+        if (assignment) {
+          await this.prisma.couponBuyerAssignment.update({
+            where: { id: assignment.id },
+            data: {
+              isUsed: true,
+              usedAt: new Date(),
+            },
+          });
+
+          await this.prisma.coupon.update({
+            where: { id: couponId },
+            data: {
+              usedCount: {
+                increment: 1,
+              },
+            },
+          });
+        }
+      }
+
+      await this.sendOrderPlacedAutoMessage({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        buyerUserId: buyer?.userId,
+        vendorUserId: vendor?.userId,
+        vendorItems,
+        totalAmount: Number(order.totalAmount),
+      });
+
+      return this.prisma.order.findUnique({
+        where: { id: order.id },
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+          vendor: {
+            select: {
+              id: true,
+              businessName: true,
+            },
           },
         },
-      },
-    });
+      });
+    } catch (error) {
+      this.handleOrderError("create order", error);
+    }
   }
 
   async findAllByBuyer(buyerId: string) {
@@ -554,36 +567,41 @@ export class OrdersService {
     vendorId: string,
     updateOrderStatusDto: UpdateOrderStatusDto,
   ) {
-    const order = await this.prisma.order.findUnique({
-      where: { id },
-    });
+    return this.updateOrderStatus(id, vendorId, updateOrderStatusDto);
+  }
 
-    if (!order) {
-      throw new NotFoundException("Order not found");
-    }
+  async updateOrderStatus(
+    id: string,
+    vendorId: string,
+    updateOrderStatusDto: UpdateOrderStatusDto,
+  ) {
+    try {
+      const order = await this.prisma.order.findUnique({
+        where: { id },
+      });
 
-    if (order.vendorId !== vendorId) {
-      throw new ForbiddenException("You do not have access to this order");
-    }
+      if (!order) {
+        throw new NotFoundException("Order not found");
+      }
 
-    const updated = await this.prisma.order.update({
-      where: { id },
-      data: {
-        status: updateOrderStatusDto.status,
-      },
-      include: {
-        items: {
-          include: {
-            product: true,
+      if (order.vendorId !== vendorId) {
+        throw new ForbiddenException("You do not have access to this order");
+      }
+
+      const updated = await this.prisma.order.update({
+        where: { id },
+        data: {
+          status: updateOrderStatusDto.status,
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    if (
-      updateOrderStatusDto.status === OrderStatus.DELIVERED ||
-      updateOrderStatusDto.status === OrderStatus.CANCELLED
-    ) {
       const [buyer, vendor] = await Promise.all([
         this.prisma.buyer.findUnique({
           where: { id: order.buyerId },
@@ -595,33 +613,164 @@ export class OrdersService {
         }),
       ]);
 
-      if (buyer?.userId) {
-        await this.notificationsService.notifyBuyer(buyer.userId, {
-          title:
-            updateOrderStatusDto.status === OrderStatus.DELIVERED
-              ? "Order delivered"
-              : "Order cancelled",
-          message: `Your order ${order.orderNumber} status is now ${updateOrderStatusDto.status.toLowerCase()}.`,
-          type:
-            updateOrderStatusDto.status === OrderStatus.DELIVERED
-              ? NotificationType.SUCCESS
-              : NotificationType.WARNING,
-        });
+      await this.sendOrderUpdatedAutoMessage({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        status: updateOrderStatusDto.status,
+        vendorUserId: vendor?.userId,
+        buyerUserId: buyer?.userId,
+      });
+
+      if (
+        updateOrderStatusDto.status === OrderStatus.DELIVERED ||
+        updateOrderStatusDto.status === OrderStatus.CANCELLED
+      ) {
+        if (buyer?.userId) {
+          await this.notificationsService.notifyBuyer(buyer.userId, {
+            title:
+              updateOrderStatusDto.status === OrderStatus.DELIVERED
+                ? "Order delivered"
+                : "Order cancelled",
+            message: `Your order ${order.orderNumber} status is now ${updateOrderStatusDto.status.toLowerCase()}.`,
+            type:
+              updateOrderStatusDto.status === OrderStatus.DELIVERED
+                ? NotificationType.SUCCESS
+                : NotificationType.WARNING,
+          });
+        }
+
+        if (vendor?.userId) {
+          await this.notificationsService.notifyVendor(vendor.userId, {
+            title:
+              updateOrderStatusDto.status === OrderStatus.DELIVERED
+                ? "Order delivered"
+                : "Order cancelled",
+            message: `Order ${order.orderNumber} status updated to ${updateOrderStatusDto.status.toLowerCase()}.`,
+            type: NotificationType.INFO,
+          });
+        }
+
+        await this.unpinOrderMessageIfNeeded(order.id);
       }
 
-      if (vendor?.userId) {
-        await this.notificationsService.notifyVendor(vendor.userId, {
-          title:
-            updateOrderStatusDto.status === OrderStatus.DELIVERED
-              ? "Order delivered"
-              : "Order cancelled",
-          message: `Order ${order.orderNumber} status updated to ${updateOrderStatusDto.status.toLowerCase()}.`,
-          type: NotificationType.INFO,
-        });
-      }
+      return updated;
+    } catch (error) {
+      this.handleOrderError("update order status", error);
+    }
+  }
+
+  private async sendOrderPlacedAutoMessage(input: {
+    orderId: string;
+    orderNumber: string;
+    buyerUserId?: string;
+    vendorUserId?: string;
+    vendorItems: Array<{
+      quantity: number;
+      priceAtAddition: unknown;
+      product: { name: string };
+    }>;
+    totalAmount: number;
+  }) {
+    if (!input.buyerUserId || !input.vendorUserId) {
+      return;
     }
 
-    return updated;
+    const itemDetails = input.vendorItems.map((item) => ({
+      productName: item.product.name,
+      quantity: item.quantity,
+      price: Number(item.priceAtAddition),
+    }));
+
+    const firstItem = itemDetails[0];
+
+    try {
+      const autoMessage = await this.messagesService.createAutoMessage({
+        senderId: input.buyerUserId,
+        receiverId: input.vendorUserId,
+        type: "ORDER_PLACED",
+        orderId: input.orderId,
+        messageText: `Order ${input.orderNumber} has been placed.`,
+        metadata: {
+          orderId: input.orderId,
+          orderNumber: input.orderNumber,
+          productName: firstItem?.productName ?? "Multiple items",
+          quantity:
+            firstItem?.quantity ??
+            itemDetails.reduce((sum, item) => sum + item.quantity, 0),
+          price: firstItem?.price ?? input.totalAmount,
+          items: itemDetails,
+          totalAmount: input.totalAmount,
+        },
+      });
+
+      this.messagesGateway.emitNewMessage(autoMessage);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send order placed auto-message: ${error instanceof Error ? error.message : "unknown error"}`,
+      );
+    }
+  }
+
+  private async sendOrderUpdatedAutoMessage(input: {
+    orderId: string;
+    orderNumber: string;
+    status: OrderStatus;
+    vendorUserId?: string;
+    buyerUserId?: string;
+  }) {
+    if (!input.vendorUserId || !input.buyerUserId) {
+      return;
+    }
+
+    try {
+      const autoMessage = await this.messagesService.createAutoMessage({
+        senderId: input.vendorUserId,
+        receiverId: input.buyerUserId,
+        type: "ORDER_UPDATED",
+        orderId: input.orderId,
+        messageText: `Order ${input.orderNumber} status updated to ${input.status}.`,
+        metadata: {
+          orderId: input.orderId,
+          orderNumber: input.orderNumber,
+          status: input.status,
+        },
+      });
+
+      this.messagesGateway.emitNewMessage(autoMessage);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send order updated auto-message: ${error instanceof Error ? error.message : "unknown error"}`,
+      );
+    }
+  }
+
+  private async unpinOrderMessageIfNeeded(orderId: string) {
+    try {
+      const conversation = await this.messagesService.unpinMessageByOrderId(orderId);
+      if (conversation) {
+        this.messagesGateway.emitMessagePinned(conversation);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to unpin order message: ${error instanceof Error ? error.message : "unknown error"}`,
+      );
+    }
+  }
+
+  private handleOrderError(action: string, error: unknown): never {
+    if (
+      error instanceof NotFoundException ||
+      error instanceof BadRequestException ||
+      error instanceof ForbiddenException
+    ) {
+      throw error;
+    }
+
+    this.logger.error(
+      `Failed to ${action}`,
+      error instanceof Error ? error.stack : String(error),
+    );
+    throw new InternalServerErrorException(`Failed to ${action}`);
   }
 
   private generateOrderNumber(): string {

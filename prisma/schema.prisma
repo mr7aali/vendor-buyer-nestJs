@@ -64,6 +64,7 @@ model Buyer {
   cart              Cart?
   couponAssignments CouponBuyerAssignment[]
   messages          Message[]
+  conversations     Conversation[]
   adminChatThread   AdminChatThread?
   adminChatMessages AdminChatMessage[]      @relation("AdminChatBuyerMessages")
   orders            Order[]
@@ -108,6 +109,7 @@ model Vendor {
   categories        Category[]
   coupons           Coupon[]
   messages          Message[]
+  conversations     Conversation[]
   adminChatThread   AdminChatThread?
   adminChatMessages AdminChatMessage[]      @relation("AdminChatVendorMessages")
   orders            Order[]
@@ -242,6 +244,7 @@ model Order {
   coupon          Coupon?         @relation(fields: [couponId], references: [id])
   vendor          Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   items           OrderItem[]
+  messages        Message[]
   payments        Payment?
   productReviews  ProductReview[]
   vendorReviews   VendorReview[]
@@ -328,24 +331,51 @@ model CouponBuyerAssignment {
   @@index([buyerId])
 }
 
+model Conversation {
+  id              String   @id @default(uuid())
+  vendorId        String
+  buyerId         String
+  pinnedMessageId String?  @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  buyer           Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  vendor          Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  messages        Message[] @relation("ConversationMessages")
+  pinnedMessage   Message?  @relation("PinnedConversationMessage", fields: [pinnedMessageId], references: [id], onDelete: SetNull)
+
+  @@unique([vendorId, buyerId])
+  @@index([buyerId])
+  @@index([vendorId])
+}
+
 model Message {
-  id          String   @id @default(uuid())
-  senderId    String
-  receiverId  String
-  vendorId    String?
-  buyerId     String?
-  messageText String
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  buyer       Buyer?   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
-  sender      User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  vendor      Vendor?  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  id                   String        @id @default(uuid())
+  senderId             String
+  receiverId           String
+  vendorId             String?
+  buyerId              String?
+  orderId              String?
+  conversationId       String?
+  messageText          String
+  type                 String        @default("TEXT")
+  metadata             Json?
+  isRead               Boolean       @default(false)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  buyer                Buyer?        @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  conversation         Conversation? @relation("ConversationMessages", fields: [conversationId], references: [id], onDelete: SetNull)
+  order                Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  receiver             User          @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender               User          @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  vendor               Vendor?       @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  pinnedInConversation Conversation? @relation("PinnedConversationMessage")
 
   @@index([senderId])
   @@index([receiverId])
   @@index([vendorId, buyerId])
+  @@index([conversationId])
+  @@index([orderId])
+  @@index([type])
 }
 
 model Notification {
