@@ -49,6 +49,7 @@ import { UpdateAdminProfileDto } from "./dto/update-admin-profile.dto";
 import { ChangeAdminPasswordDto } from "./dto/change-admin-password.dto";
 import { UpdateBuyerDto } from "./dto/update-buyer.dto";
 import { GoogleAuthDto, AppleAuthDto } from "./dto/social-auth.dto";
+import { SwitchProfileDto } from "./dto/switch-profile.dto";
 // import { UpdateProfileDto } from "./dto/update.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 // import { UpdateEmployeePermissionsDto } from "./dto/update-employee-permissions.dto";
@@ -172,6 +173,21 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async refresh(@Body("refreshToken") refreshToken: string) {
     return this.authService.refreshTokens(refreshToken);
+  }
+
+  @Post("switch-profile")
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async switchProfile(
+    @GetUser()
+    user: {
+      id: string;
+      email: string;
+      userType: "vendor" | "buyer" | "user";
+    },
+    @Body() dto: SwitchProfileDto,
+  ) {
+    return this.authService.switchProfile(user.id, dto.targetRole);
   }
 
   // ==================== ADMIN DASHBOARD MANAGEMENT ====================
