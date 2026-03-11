@@ -70,7 +70,7 @@ export class OrdersController {
     if (!buyer) {
       throw new NotFoundException("Buyer profile not found");
     }
-    return this.ordersService.create(buyer.id, createOrderDto);
+    return this.ordersService.createOrder(buyer.id, createOrderDto);
   }
 
   @Get()
@@ -177,6 +177,10 @@ export class OrdersController {
     if (!vendor) {
       throw new NotFoundException("Vendor profile not found");
     }
-    return this.ordersService.updateStatus(id, vendor.id, updateOrderStatusDto);
+    return this.ordersService.updateOrderStatus(
+      id,
+      vendor.id,
+      updateOrderStatusDto,
+    );
   }
 }

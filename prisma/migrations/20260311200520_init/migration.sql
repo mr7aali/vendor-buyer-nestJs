@@ -21,11 +21,16 @@ CREATE TABLE "user" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "index" SERIAL NOT NULL,
-    "passwordHash" TEXT NOT NULL,
+    "passwordHash" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "userType" TEXT NOT NULL,
     "evanAddress" TEXT NOT NULL DEFAULT '',
+    "googleId" TEXT,
+    "appleId" TEXT,
+    "authProvider" TEXT NOT NULL DEFAULT 'local',
+    "displayName" TEXT,
+    "avatarUrl" TEXT,
 
     CONSTRAINT "user_pkey" PRIMARY KEY ("id")
 );
@@ -281,13 +286,29 @@ CREATE TABLE "CouponBuyerAssignment" (
 );
 
 -- CreateTable
+CREATE TABLE "Conversation" (
+    "id" TEXT NOT NULL,
+    "vendorId" TEXT NOT NULL,
+    "buyerId" TEXT NOT NULL,
+    "pinnedMessageId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Conversation_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Message" (
     "id" TEXT NOT NULL,
     "senderId" TEXT NOT NULL,
     "receiverId" TEXT NOT NULL,
     "vendorId" TEXT,
     "buyerId" TEXT,
+    "orderId" TEXT,
+    "conversationId" TEXT,
     "messageText" TEXT NOT NULL,
+    "type" TEXT NOT NULL DEFAULT 'TEXT',
+    "metadata" JSONB,
     "isRead" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -309,6 +330,16 @@ CREATE TABLE "Notification" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "FcmToken" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "FcmToken_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -425,6 +456,12 @@ CREATE UNIQUE INDEX "user_email_key" ON "user"("email");
 CREATE UNIQUE INDEX "user_index_key" ON "user"("index");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "user_googleId_key" ON "user"("googleId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_appleId_key" ON "user"("appleId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Buyer_userId_key" ON "Buyer"("userId");
 
 -- CreateIndex
@@ -509,6 +546,18 @@ CREATE INDEX "CouponBuyerAssignment_buyerId_idx" ON "CouponBuyerAssignment"("buy
 CREATE UNIQUE INDEX "CouponBuyerAssignment_couponId_buyerId_key" ON "CouponBuyerAssignment"("couponId", "buyerId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Conversation_pinnedMessageId_key" ON "Conversation"("pinnedMessageId");
+
+-- CreateIndex
+CREATE INDEX "Conversation_buyerId_idx" ON "Conversation"("buyerId");
+
+-- CreateIndex
+CREATE INDEX "Conversation_vendorId_idx" ON "Conversation"("vendorId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Conversation_vendorId_buyerId_key" ON "Conversation"("vendorId", "buyerId");
+
+-- CreateIndex
 CREATE INDEX "Message_senderId_idx" ON "Message"("senderId");
 
 -- CreateIndex
@@ -518,6 +567,15 @@ CREATE INDEX "Message_receiverId_idx" ON "Message"("receiverId");
 CREATE INDEX "Message_vendorId_buyerId_idx" ON "Message"("vendorId", "buyerId");
 
 -- CreateIndex
+CREATE INDEX "Message_conversationId_idx" ON "Message"("conversationId");
+
+-- CreateIndex
+CREATE INDEX "Message_orderId_idx" ON "Message"("orderId");
+
+-- CreateIndex
+CREATE INDEX "Message_type_idx" ON "Message"("type");
+
+-- CreateIndex
 CREATE INDEX "Notification_userId_idx" ON "Notification"("userId");
 
 -- CreateIndex
@@ -525,6 +583,12 @@ CREATE INDEX "Notification_broadcastId_idx" ON "Notification"("broadcastId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Notification_broadcastId_userId_key" ON "Notification"("broadcastId", "userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "FcmToken_token_key" ON "FcmToken"("token");
+
+-- CreateIndex
+CREATE INDEX "FcmToken_userId_idx" ON "FcmToken"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Admin_email_key" ON "Admin"("email");
@@ -644,7 +708,22 @@ ALTER TABLE "CouponBuyerAssignment" ADD CONSTRAINT "CouponBuyerAssignment_buyerI
 ALTER TABLE "CouponBuyerAssignment" ADD CONSTRAINT "CouponBuyerAssignment_couponId_fkey" FOREIGN KEY ("couponId") REFERENCES "Coupon"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Conversation" ADD CONSTRAINT "Conversation_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Conversation" ADD CONSTRAINT "Conversation_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Conversation" ADD CONSTRAINT "Conversation_pinnedMessageId_fkey" FOREIGN KEY ("pinnedMessageId") REFERENCES "Message"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Message" ADD CONSTRAINT "Message_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Message" ADD CONSTRAINT "Message_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "Conversation"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Message" ADD CONSTRAINT "Message_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Message" ADD CONSTRAINT "Message_receiverId_fkey" FOREIGN KEY ("receiverId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -657,6 +736,9 @@ ALTER TABLE "Message" ADD CONSTRAINT "Message_vendorId_fkey" FOREIGN KEY ("vendo
 
 -- AddForeignKey
 ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "FcmToken" ADD CONSTRAINT "FcmToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AdminPermission" ADD CONSTRAINT "AdminPermission_adminId_fkey" FOREIGN KEY ("adminId") REFERENCES "Admin"("id") ON DELETE CASCADE ON UPDATE CASCADE;

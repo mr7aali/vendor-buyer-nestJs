@@ -9,6 +9,6 @@ import { AuthModule } from "src/auth/auth.module";
   imports: [PrismaModule, AuthModule],
   controllers: [MessagesController],
   providers: [MessagesService, MessagesGateway],
-  exports: [MessagesService],
+  exports: [MessagesService, MessagesGateway],
 })
 export class MessagesModule {}

@@ -24,12 +24,12 @@ import { GetUser } from "../auth/decorators/get-user.decorator";
 
 @ApiTags("Messages")
 @ApiBearerAuth("JWT-auth")
-@Controller("messages")
+@Controller()
 @UseGuards(JwtAuthGuard)
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
-  @Post()
+  @Post("messages")
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: "Send a message",
@@ -53,7 +53,7 @@ export class MessagesController {
     return this.messagesService.create(user.id, createMessageDto);
   }
 
-  @Get("conversations")
+  @Get("messages/conversations")
   @ApiOperation({
     summary: "Get all conversations",
     description: "Get all conversations with last message and unread count",
@@ -66,7 +66,7 @@ export class MessagesController {
     return this.messagesService.getConversations(user.id);
   }
 
-  @Get("conversation/:partnerId")
+  @Get("messages/conversation/:partnerId")
   @ApiOperation({
     summary: "Get messages with a partner",
     description: "Get all messages in a conversation with a specific user",
@@ -84,7 +84,7 @@ export class MessagesController {
     return this.messagesService.getMessages(user.id, partnerId);
   }
 
-  @Patch(":id/read")
+  @Patch("messages/:id/read")
   @ApiOperation({
     summary: "Mark message as read",
     description: "Mark a specific message as read",
@@ -101,5 +101,28 @@ export class MessagesController {
   @ApiResponse({ status: 404, description: "Message not found" })
   async markAsRead(@Param("id") id: string, @GetUser() user: any) {
     return this.messagesService.markAsRead(id, user.id);
+  }
+
+  @Get("conversations/:id/pinned")
+  @ApiOperation({
+    summary: "Get pinned conversation message",
+    description: "Get the currently pinned message for a conversation",
+  })
+  @ApiParam({
+    name: "id",
+    description: "Conversation ID",
+    example: "uuid-here",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Pinned message retrieved successfully",
+  })
+  @ApiResponse({
+    status: 403,
+    description: "Forbidden - User has no access to this conversation",
+  })
+  @ApiResponse({ status: 404, description: "Conversation not found" })
+  async getPinnedMessage(@Param("id") conversationId: string, @GetUser() user: any) {
+    return this.messagesService.getPinnedMessage(user.id, conversationId);
   }
 }
