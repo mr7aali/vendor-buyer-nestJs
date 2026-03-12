@@ -948,3 +948,173 @@ Buyer:
 6. Poll briefly while payment is pending
 7. Show success only when `paymentRecord.status === "succeeded"`
 8. Refresh the order after success
+
+## 16. Scenario-Based API Call Order
+
+This section answers the practical frontend question:
+
+- which API is called first
+- which API is called next
+- in which scenario
+
+### Scenario 1: Vendor opens Stripe setup for the first time
+
+Use this when the vendor has never connected Stripe before.
+
+Step order:
+
+1. Call `POST /payments/vendor/stripe/account`
+2. Read `data.status`
+3. If status is not `verified`, call `POST /payments/vendor/stripe/account-link`
+4. Open the returned `data.url`
+5. After Stripe sends the vendor back, call `GET /payments/vendor/stripe/status`
+6. If status becomes `verified`, stop
+7. If status is still `pending`, allow the vendor to continue setup again
+
+Why:
+
+- first API creates or fetches the vendor Stripe account
+- second API creates the Stripe onboarding link
+- third API checks whether onboarding is actually complete
+
+### Scenario 2: Vendor opens payout settings again later
+
+Use this when vendor already has some Stripe state.
+
+Step order:
+
+1. Call `POST /payments/vendor/stripe/account`
+2. If returned status is `verified`, do not call anything else
+3. If returned status is `pending` or `restricted`, call `POST /payments/vendor/stripe/account-link`
+4. Open returned `data.url`
+5. After return, call `GET /payments/vendor/stripe/status`
+
+Why:
+
+- this route is safe to call every time payout settings opens
+- it tells frontend whether vendor is already connected or still needs onboarding
+
+### Scenario 3: Vendor started onboarding but did not finish
+
+Use this when vendor closed Stripe or came back without completing the full form.
+
+Step order:
+
+1. Call `GET /payments/vendor/stripe/status`
+2. If status is `pending`, show "Continue Stripe setup"
+3. When vendor taps continue, call `POST /payments/vendor/stripe/account-link`
+4. Open returned `data.url`
+5. After return, call `GET /payments/vendor/stripe/status` again
+
+Expected result:
+
+- `pending`: still incomplete
+- `verified`: finished successfully
+- `restricted`: Stripe needs action
+
+### Scenario 4: Buyer pays an unpaid order
+
+Use this on the order details screen when the order is still unpaid.
+
+Step order:
+
+1. Call `POST /payments/create-intent` with `orderId`
+2. Read `paymentLink` from response
+3. Open `paymentLink`
+4. Buyer finishes payment on Stripe Checkout
+5. Stripe redirects buyer to `/payment/success?session_id=...&order_id=...`
+6. Read `session_id`
+7. Call `GET /payments/status/:sessionId`
+8. If payment is `pending`, poll `GET /payments/status/:sessionId`
+9. When `paymentRecord.status === "succeeded"`, refresh the order screen
+
+Why:
+
+- `create-intent` creates the Checkout Session
+- `status/:sessionId` confirms the real backend payment state after webhook processing
+
+### Scenario 5: Buyer cancels from Stripe Checkout
+
+Use this when buyer closes payment or taps cancel on Stripe Checkout.
+
+Step order:
+
+1. Buyer is redirected to `/payment/cancel?order_id=...`
+2. Show "Payment canceled"
+3. Return buyer to order details
+4. If buyer taps pay again later, call `POST /payments/create-intent` again
+
+Important:
+
+- do not mark order as paid
+- do not show success
+
+### Scenario 6: Buyer lands on success page but payment is still pending
+
+This is a real scenario because redirect can happen before webhook state is fully visible.
+
+Step order:
+
+1. Success page loads
+2. Call `GET /payments/status/:sessionId`
+3. If `paymentRecord.status === "pending"`, keep polling
+4. If status becomes `succeeded`, show success
+5. If status becomes `failed` or `canceled`, show failure or canceled message
+
+Frontend rule:
+
+- success page is not final proof
+- backend status endpoint is final proof
+
+### Scenario 7: Buyer tries to pay an order that is already paid
+
+Step order:
+
+1. Call `POST /payments/create-intent`
+2. Backend may return `400 Order has already been paid`
+3. Frontend should stop the flow
+4. Refresh order details and show paid state
+
+### Scenario 8: Buyer tries to pay but vendor Stripe is not ready
+
+Step order:
+
+1. Call `POST /payments/create-intent`
+2. Backend may return one of:
+   - `Vendor is not onboarded to Stripe`
+   - `Vendor Stripe account is not fully enabled`
+3. Frontend should stop payment flow
+4. Show a clear message that vendor payment setup is incomplete
+
+### Scenario 9: Buyer revisits order later and wants to check payment info
+
+Use this after payment flow is over and you already know the order id.
+
+Step order:
+
+1. Call `GET /payments/order/:orderId`
+2. Read stored payment info
+3. Use it to show payment status on the order screen
+
+Use this for:
+
+- order history screen
+- order details reload
+- payment info display after previous payment attempt
+
+### Scenario 10: Exact short version the frontend developer should follow
+
+Vendor connect flow:
+
+1. `POST /payments/vendor/stripe/account`
+2. If not verified -> `POST /payments/vendor/stripe/account-link`
+3. Open Stripe URL
+4. On return -> `GET /payments/vendor/stripe/status`
+
+Buyer payment flow:
+
+1. `POST /payments/create-intent`
+2. Open `paymentLink`
+3. On success redirect -> `GET /payments/status/:sessionId`
+4. Poll if pending
+5. Show success only when `paymentRecord.status === "succeeded"`

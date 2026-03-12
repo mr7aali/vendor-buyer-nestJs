@@ -115,9 +115,10 @@ export class MessagesGateway
   ) {
     try {
       const userId = client.data.userId;
-      const conversation = await this.messagesService.getConversationParticipants(
-        data.conversationId,
-      );
+      const conversation =
+        await this.messagesService.getConversationParticipants(
+          data.conversationId,
+        );
 
       if (
         conversation.buyer.userId !== userId &&
