@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   NotFoundException,
   HttpCode,
@@ -26,6 +27,7 @@ import { UserType } from "../auth/dto/register.dto";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { GetUser } from "../auth/decorators/get-user.decorator";
 import { ConnectVendorDto } from "./dto/connect-vendor.dto";
+import { GetExploreVendorsQueryDto } from "./dto/get-explore-vendors.dto";
 import QRCode from "qrcode";
 import { ConfigService } from "@nestjs/config";
 
@@ -78,6 +80,25 @@ export class VendorBuyerConnectionsController {
       return this.connectionsService.getVendorConnections(vendor.id);
     }
   }
+
+  @Get("vendors")
+  @Roles(UserType.BUYER)
+  @UseGuards(RolesGuard)
+  async getExploreVendors(
+    @GetUser() user: any,
+    @Query() query: GetExploreVendorsQueryDto,
+  ) {
+    const buyer = await this.prisma.buyer.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!buyer) {
+      throw new NotFoundException("Buyer profile not found");
+    }
+
+    return this.connectionsService.getExploreVendors(buyer.id, query);
+  }
+
   @Get("qr/:vendorId")
   async generateQr(@Param("vendorId") vendorId: string) {
     const vendor = await this.prisma.vendor.findUnique({

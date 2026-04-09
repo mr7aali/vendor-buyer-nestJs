@@ -36,6 +36,7 @@ export class ReviewController {
     @GetUser("id") buyerId: string,
     @Body() dto: CreateProductReviewDto,
   ) {
+    console.log(dto, "product details");
     return this.reviewService.createProductReview(buyerId, dto);
   }
 

@@ -13,14 +13,43 @@ import {
   GetReviewsQueryDto,
   ReviewSortBy,
 } from "./dto";
+import { OrderStatus } from "../orders/dto/update-order-status.dto";
 
 @Injectable()
 export class ReviewService {
   constructor(private prisma: PrismaService) {}
 
+  private getUserId(userOrId: string | { id?: string } | null | undefined) {
+    if (typeof userOrId === "string") {
+      return userOrId;
+    }
+
+    if (userOrId && typeof userOrId === "object" && userOrId.id) {
+      return userOrId.id;
+    }
+
+    throw new BadRequestException("Invalid authenticated user");
+  }
+
+  private async getBuyerProfileId(userOrId: string | { id?: string } | null | undefined) {
+    const userId = this.getUserId(userOrId);
+    const buyer = await this.prisma.buyer.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!buyer) {
+      throw new ForbiddenException("Buyer profile not found");
+    }
+
+    return buyer.id;
+  }
+
   // ==================== PRODUCT REVIEWS ====================
 
   async createProductReview(buyerId: string, dto: CreateProductReviewDto) {
+    const buyerProfileId = await this.getBuyerProfileId(buyerId);
+
     // Check if product exists
     const product = await this.prisma.product.findUnique({
       where: { id: dto.productId },
@@ -36,8 +65,8 @@ export class ReviewService {
       const order = await this.prisma.order.findFirst({
         where: {
           id: dto.orderId,
-          buyerId,
-          status: "DELIVERED",
+          buyerId: buyerProfileId,
+          status: OrderStatus.DELIVERED,
           items: {
             some: {
               productId: dto.productId,
@@ -59,7 +88,7 @@ export class ReviewService {
         where: {
           productId_buyerId_orderId: {
             productId: dto.productId,
-            buyerId,
+            buyerId: buyerProfileId,
             orderId: dto.orderId,
           },
         },
@@ -76,7 +105,7 @@ export class ReviewService {
     const review = await this.prisma.productReview.create({
       data: {
         productId: dto.productId,
-        buyerId,
+        buyerId: buyerProfileId,
         orderId: dto.orderId,
         rating: dto.rating,
         comment: dto.comment,
@@ -188,6 +217,7 @@ export class ReviewService {
     buyerId: string,
     dto: UpdateProductReviewDto,
   ) {
+    const buyerProfileId = await this.getBuyerProfileId(buyerId);
     const review = await this.prisma.productReview.findUnique({
       where: { id: reviewId },
     });
@@ -196,7 +226,7 @@ export class ReviewService {
       throw new NotFoundException("Review not found");
     }
 
-    if (review.buyerId !== buyerId) {
+    if (review.buyerId !== buyerProfileId) {
       throw new ForbiddenException("You can only update your own reviews");
     }
 
@@ -227,6 +257,7 @@ export class ReviewService {
   }
 
   async deleteProductReview(reviewId: string, buyerId: string) {
+    const buyerProfileId = await this.getBuyerProfileId(buyerId);
     const review = await this.prisma.productReview.findUnique({
       where: { id: reviewId },
     });
@@ -235,7 +266,7 @@ export class ReviewService {
       throw new NotFoundException("Review not found");
     }
 
-    if (review.buyerId !== buyerId) {
+    if (review.buyerId !== buyerProfileId) {
       throw new ForbiddenException("You can only delete your own reviews");
     }
 
@@ -255,6 +286,8 @@ export class ReviewService {
   // ==================== VENDOR REVIEWS ====================
 
   async createVendorReview(buyerId: string, dto: CreateVendorReviewDto) {
+    const buyerProfileId = await this.getBuyerProfileId(buyerId);
+
     // Check if vendor exists
     const vendor = await this.prisma.vendor.findUnique({
       where: { id: dto.vendorId },
@@ -269,9 +302,9 @@ export class ReviewService {
       const order = await this.prisma.order.findFirst({
         where: {
           id: dto.orderId,
-          buyerId,
+          buyerId: buyerProfileId,
           vendorId: dto.vendorId,
-          status: "DELIVERED",
+          status: OrderStatus.DELIVERED,
         },
       });
 
@@ -288,7 +321,7 @@ export class ReviewService {
         where: {
           vendorId_buyerId_orderId: {
             vendorId: dto.vendorId,
-            buyerId,
+            buyerId: buyerProfileId,
             orderId: dto.orderId,
           },
         },
@@ -304,7 +337,7 @@ export class ReviewService {
     const review = await this.prisma.vendorReview.create({
       data: {
         vendorId: dto.vendorId,
-        buyerId,
+        buyerId: buyerProfileId,
         orderId: dto.orderId,
         rating: dto.rating,
         comment: dto.comment,
@@ -415,6 +448,7 @@ export class ReviewService {
     buyerId: string,
     dto: UpdateVendorReviewDto,
   ) {
+    const buyerProfileId = await this.getBuyerProfileId(buyerId);
     const review = await this.prisma.vendorReview.findUnique({
       where: { id: reviewId },
     });
@@ -423,7 +457,7 @@ export class ReviewService {
       throw new NotFoundException("Review not found");
     }
 
-    if (review.buyerId !== buyerId) {
+    if (review.buyerId !== buyerProfileId) {
       throw new ForbiddenException("You can only update your own reviews");
     }
 
@@ -453,6 +487,7 @@ export class ReviewService {
   }
 
   async deleteVendorReview(reviewId: string, buyerId: string) {
+    const buyerProfileId = await this.getBuyerProfileId(buyerId);
     const review = await this.prisma.vendorReview.findUnique({
       where: { id: reviewId },
     });
@@ -461,7 +496,7 @@ export class ReviewService {
       throw new NotFoundException("Review not found");
     }
 
-    if (review.buyerId !== buyerId) {
+    if (review.buyerId !== buyerProfileId) {
       throw new ForbiddenException("You can only delete your own reviews");
     }
 
@@ -514,12 +549,13 @@ export class ReviewService {
   // ==================== GET BUYER'S REVIEWS ====================
 
   async getBuyerProductReviews(buyerId: string, query: GetReviewsQueryDto) {
+    const buyerProfileId = await this.getBuyerProfileId(buyerId);
     const { page = 1, limit = 10 } = query;
     const skip = (page - 1) * limit;
 
     const [reviews, total] = await Promise.all([
       this.prisma.productReview.findMany({
-        where: { buyerId },
+        where: { buyerId: buyerProfileId },
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
@@ -533,7 +569,7 @@ export class ReviewService {
           },
         },
       }),
-      this.prisma.productReview.count({ where: { buyerId } }),
+      this.prisma.productReview.count({ where: { buyerId: buyerProfileId } }),
     ]);
 
     return {
@@ -548,12 +584,13 @@ export class ReviewService {
   }
 
   async getBuyerVendorReviews(buyerId: string, query: GetReviewsQueryDto) {
+    const buyerProfileId = await this.getBuyerProfileId(buyerId);
     const { page = 1, limit = 10 } = query;
     const skip = (page - 1) * limit;
 
     const [reviews, total] = await Promise.all([
       this.prisma.vendorReview.findMany({
-        where: { buyerId },
+        where: { buyerId: buyerProfileId },
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
@@ -568,7 +605,7 @@ export class ReviewService {
           },
         },
       }),
-      this.prisma.vendorReview.count({ where: { buyerId } }),
+      this.prisma.vendorReview.count({ where: { buyerId: buyerProfileId } }),
     ]);
 
     return {
