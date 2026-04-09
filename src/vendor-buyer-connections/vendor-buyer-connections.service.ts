@@ -2,11 +2,11 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ForbiddenException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { NotificationType } from "../notifications/dto/create-notification.dto";
+import { GetExploreVendorsQueryDto } from "./dto/get-explore-vendors.dto";
 
 @Injectable()
 export class VendorBuyerConnectionsService {
@@ -146,6 +146,102 @@ export class VendorBuyerConnectionsService {
       orderBy: {
         connectedAt: "desc",
       },
+    });
+  }
+
+  async getExploreVendors(
+    buyerId: string,
+    query: GetExploreVendorsQueryDto = {},
+  ) {
+    const search = String(query?.search || "").trim();
+
+    const vendors = await this.prisma.vendor.findMany({
+      where: {
+        isActive: true,
+        ...(search
+          ? {
+              OR: [
+                { fullName: { contains: search, mode: "insensitive" } },
+                { storename: { contains: search, mode: "insensitive" } },
+                { businessName: { contains: search, mode: "insensitive" } },
+                { storeDescription: { contains: search, mode: "insensitive" } },
+                {
+                  businessDescription: {
+                    contains: search,
+                    mode: "insensitive",
+                  },
+                },
+                { address: { contains: search, mode: "insensitive" } },
+                { vendorCode: { contains: search, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        userId: true,
+        vendorCode: true,
+        fullName: true,
+        storename: true,
+        businessName: true,
+        address: true,
+        storeDescription: true,
+        businessDescription: true,
+        logoUrl: true,
+        isActive: true,
+        averageRating: true,
+        totalReviews: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            products: true,
+            categories: true,
+            connections: true,
+          },
+        },
+        connections: {
+          where: {
+            buyerId,
+            isActive: true,
+          },
+          select: {
+            id: true,
+            connectedAt: true,
+          },
+          take: 1,
+        },
+      },
+      orderBy: [{ averageRating: "desc" }, { createdAt: "desc" }],
+    });
+
+    return vendors.map((vendor) => {
+      const activeConnection = vendor.connections[0] || null;
+
+      return {
+        id: vendor.id,
+        userId: vendor.userId,
+        vendorCode: vendor.vendorCode,
+        fullName: vendor.fullName,
+        storename: vendor.storename,
+        businessName: vendor.businessName,
+        address: vendor.address,
+        storeDescription: vendor.storeDescription,
+        businessDescription: vendor.businessDescription,
+        logoUrl: vendor.logoUrl,
+        isActive: vendor.isActive,
+        averageRating: Number(vendor.averageRating || 0),
+        totalReviews: vendor.totalReviews || 0,
+        counts: {
+          products: vendor._count.products,
+          categories: vendor._count.categories,
+          connections: vendor._count.connections,
+        },
+        isConnected: Boolean(activeConnection),
+        connection: activeConnection,
+        createdAt: vendor.createdAt,
+        updatedAt: vendor.updatedAt,
+      };
     });
   }
 
