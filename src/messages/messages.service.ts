@@ -79,7 +79,7 @@ export class MessagesService {
       for (const message of messages) {
         const partnerId =
           message.senderId === userId ? message.receiverId : message.senderId;
-        const partner =
+        const partnerUser =
           message.senderId === userId ? message.receiver : message.sender;
         const conversationKey =
           message.vendorId && message.buyerId
@@ -100,7 +100,7 @@ export class MessagesService {
           conversations.set(conversationKey, {
             conversationId,
             partnerId,
-            partner,
+            partner: this.buildConversationPartner(partnerUser),
             lastMessage: message,
             unreadCount: 0,
           });
@@ -444,18 +444,76 @@ export class MessagesService {
     return {
       sender: {
         select: {
-          id: true,
-          email: true,
-          userType: true,
+          ...this.getUserProfileSelect(),
         },
       },
       receiver: {
         select: {
-          id: true,
-          email: true,
-          userType: true,
+          ...this.getUserProfileSelect(),
         },
       },
+    };
+  }
+
+  private getUserProfileSelect() {
+    return {
+      id: true,
+      email: true,
+      userType: true,
+      displayName: true,
+      avatarUrl: true,
+      buyer: {
+        select: {
+          id: true,
+          userId: true,
+          fullName: true,
+          profilePhotoUrl: true,
+        },
+      },
+      vendor: {
+        select: {
+          id: true,
+          userId: true,
+          fullName: true,
+          businessName: true,
+          storename: true,
+          logoUrl: true,
+        },
+      },
+    };
+  }
+
+  private buildConversationPartner(user: any) {
+    if (!user) {
+      return null;
+    }
+
+    const buyer = user.buyer ?? null;
+    const vendor = user.vendor ?? null;
+
+    return {
+      id: user.id,
+      userId: user.id,
+      email: user.email,
+      userType: user.userType,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      fullName:
+        buyer?.fullName ??
+        vendor?.fullName ??
+        user.displayName ??
+        null,
+      businessName: vendor?.businessName ?? null,
+      storename: vendor?.storename ?? null,
+      profilePhotoUrl: buyer?.profilePhotoUrl ?? null,
+      logoUrl: vendor?.logoUrl ?? null,
+      avatar:
+        buyer?.profilePhotoUrl ??
+        vendor?.logoUrl ??
+        user.avatarUrl ??
+        null,
+      buyer,
+      vendor,
     };
   }
 
