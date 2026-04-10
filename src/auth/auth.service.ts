@@ -218,8 +218,8 @@ export class AuthService {
             ? this.cloudinaryService.uploadFile(files.businessId[0])
             : Promise.resolve(null),
         ]);
-      await this.prisma.$transaction(async () => {
-        const vendor = await this.prisma.vendor.create({
+      await this.prisma.$transaction(async (prisma) => {
+        const vendor = await prisma.vendor.create({
           data: {
             userId: userId,
             fullName: data.fullName,
@@ -227,6 +227,8 @@ export class AuthService {
             address: data.address,
             storename: data.storename,
             storeDescription: data.storeDescription,
+            businessName: data.businessName?.trim() || null,
+            businessDescription: data.businessDescription?.trim() || null,
             logoUrl: logoResult.secure_url,
             nidFontPhotoUrl: nidFrontResult.secure_url,
             nidBackPhotoUrl: nidBackResult.secure_url,
@@ -237,7 +239,7 @@ export class AuthService {
             country: data.country,
           },
         });
-        await this.prisma.user.update({
+        await prisma.user.update({
           where: {
             id: userId,
           },
@@ -261,8 +263,9 @@ export class AuthService {
         type: NotificationType.SUCCESS,
       });
     } catch (error) {
+      console.error("registerVendor failed:", error);
       throw new BadRequestException(
-        `Failed to upload images: ${error.message}`,
+        `Failed to register vendor: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   }

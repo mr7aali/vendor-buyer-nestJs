@@ -48,6 +48,16 @@ export class UpdateProductDto {
   stockQuantity?: number;
 
   @ApiPropertyOptional({
+    description: 'Minimum quantity required',
+    example: 1,
+    minimum: 0,
+  })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  minimulAuantity?: number;
+
+  @ApiPropertyOptional({
     description: 'Product image URL',
     example: 'https://example.com/product-image.jpg',
     format: 'uri',
