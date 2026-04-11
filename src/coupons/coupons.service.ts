@@ -176,20 +176,29 @@ export class CouponsService {
     });
   }
 
-  async getBuyerCoupons(buyerId: string, vendorId?: string) {
+  async getBuyerCoupons(
+    buyerId: string,
+    vendorId?: string,
+    includeHistory = false,
+  ) {
     const where: any = {
       buyerId,
-      isUsed: false,
-      coupon: {
+    };
+
+    if (!includeHistory) {
+      where.isUsed = false;
+      where.coupon = {
         isActive: true,
         validFrom: { lte: new Date() },
         validUntil: { gte: new Date() },
-      },
-    };
+      };
+    } else if (vendorId) {
+      where.coupon = {};
+    }
 
     if (vendorId) {
       where.coupon = {
-        ...where.coupon,
+        ...(where.coupon || {}),
         vendorId,
       };
     }

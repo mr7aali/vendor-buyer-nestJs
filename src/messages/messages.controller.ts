@@ -8,6 +8,8 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UploadedFile,
+  UseInterceptors,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -16,20 +18,22 @@ import {
   ApiBearerAuth,
   ApiParam,
   ApiBody,
+  ApiConsumes,
 } from "@nestjs/swagger";
 import { MessagesService } from "./messages.service";
 import { CreateMessageDto } from "./dto/create-message.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { GetUser } from "../auth/decorators/get-user.decorator";
+import { FileInterceptor } from "@nestjs/platform-express";
 
 @ApiTags("Messages")
 @ApiBearerAuth("JWT-auth")
-@Controller()
+@Controller("messages")
 @UseGuards(JwtAuthGuard)
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
-  @Post("messages")
+  @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: "Send a message",
@@ -53,7 +57,21 @@ export class MessagesController {
     return this.messagesService.create(user.id, createMessageDto);
   }
 
-  @Get("messages/conversations")
+  @Post("upload-image")
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(FileInterceptor("image"))
+  @ApiOperation({
+    summary: "Upload chat image",
+    description: "Upload a chat image to Cloudinary and return a secure URL",
+  })
+  @ApiConsumes("multipart/form-data")
+  @ApiResponse({ status: 201, description: "Image uploaded successfully" })
+  @ApiResponse({ status: 400, description: "Bad request - Invalid image file" })
+  async uploadImage(@UploadedFile() image: Express.Multer.File) {
+    return this.messagesService.uploadChatImage(image);
+  }
+
+  @Get("conversations")
   @ApiOperation({
     summary: "Get all conversations",
     description: "Get all conversations with last message and unread count",
@@ -66,7 +84,7 @@ export class MessagesController {
     return this.messagesService.getConversations(user.id);
   }
 
-  @Get("messages/conversation/:partnerId")
+  @Get("conversation/:partnerId")
   @ApiOperation({
     summary: "Get messages with a partner",
     description: "Get all messages in a conversation with a specific user",
@@ -84,7 +102,7 @@ export class MessagesController {
     return this.messagesService.getMessages(user.id, partnerId);
   }
 
-  @Patch("messages/:id/read")
+  @Patch(":id/read")
   @ApiOperation({
     summary: "Mark message as read",
     description: "Mark a specific message as read",
