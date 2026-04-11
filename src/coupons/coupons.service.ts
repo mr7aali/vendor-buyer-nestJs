@@ -213,7 +213,6 @@ export class CouponsService {
     const coupon = await this.findOne(id, vendorId);
 
     const updateData: any = {};
-    if (updateDto.code) updateData.code = updateDto.code;
     if (updateDto.discountType)
       updateData.discountType = updateDto.discountType;
     if (updateDto.discountValue !== undefined)

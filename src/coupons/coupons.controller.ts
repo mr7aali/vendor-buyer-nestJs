@@ -39,7 +39,7 @@ export class CouponsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a coupon', description: 'Vendor only: Create a new discount coupon' })
   @ApiResponse({ status: 201, description: 'Coupon created successfully' })
-  @ApiResponse({ status: 400, description: 'Bad request - Coupon code already exists for vendor' })
+  @ApiResponse({ status: 400, description: 'Bad request - Invalid coupon data or unique code generation failed' })
   @ApiResponse({ status: 403, description: 'Forbidden - Vendor access required' })
   @ApiResponse({ status: 404, description: 'Vendor not found' })
   @ApiBody({ type: CreateCouponDto })
