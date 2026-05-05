@@ -6,7 +6,6 @@ import {
   Min,
   IsOptional,
   IsDateString,
-  Max,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
@@ -17,12 +16,12 @@ export enum DiscountType {
 
 export class CreateCouponDto {
   @ApiProperty({
-    description: "Coupon code (must be unique per vendor)",
-    example: "SAVE10",
+    description: "Coupon display name",
+    example: "Summer Sale",
   })
   @IsString()
-  @IsOptional()
-  code: string;
+  @IsNotEmpty()
+  name: string;
 
   @ApiProperty({
     description: "Type of discount",
@@ -81,7 +80,4 @@ export class CreateCouponDto {
   @IsDateString()
   @IsNotEmpty()
   validUntil: string;
-
-  @IsString()
-  name: string;
 }

@@ -39,7 +39,7 @@ export class CouponsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a coupon', description: 'Vendor only: Create a new discount coupon' })
   @ApiResponse({ status: 201, description: 'Coupon created successfully' })
-  @ApiResponse({ status: 400, description: 'Bad request - Coupon code already exists for vendor' })
+  @ApiResponse({ status: 400, description: 'Bad request - Invalid coupon data or unique code generation failed' })
   @ApiResponse({ status: 403, description: 'Forbidden - Vendor access required' })
   @ApiResponse({ status: 404, description: 'Vendor not found' })
   @ApiBody({ type: CreateCouponDto })
@@ -56,9 +56,14 @@ export class CouponsController {
   @Get()
   @ApiOperation({ summary: 'Get coupons', description: 'Get coupons - Vendors see their coupons, Buyers see coupons assigned to them (optionally filtered by vendor)' })
   @ApiQuery({ name: 'vendorId', required: false, description: 'Filter coupons by vendor ID (buyer only)', example: 'uuid-here' })
+  @ApiQuery({ name: 'includeHistory', required: false, description: 'Buyer only: include used, expired, inactive, and invalid assigned coupons', example: false })
   @ApiResponse({ status: 200, description: 'Coupons retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Buyer or vendor profile not found' })
-  async findAll(@GetUser() user: any, @Query('vendorId') vendorId?: string) {
+  async findAll(
+    @GetUser() user: any,
+    @Query('vendorId') vendorId?: string,
+    @Query('includeHistory') includeHistory?: string,
+  ) {
     if (user.userType === 'vendor') {
       const vendor = await this.prisma.vendor.findUnique({
         where: { userId: user.id },
@@ -74,7 +79,11 @@ export class CouponsController {
       if (!buyer) {
         throw new NotFoundException('Buyer profile not found');
       }
-      return this.couponsService.getBuyerCoupons(buyer.id, vendorId);
+      return this.couponsService.getBuyerCoupons(
+        buyer.id,
+        vendorId,
+        includeHistory === 'true',
+      );
     }
   }
 

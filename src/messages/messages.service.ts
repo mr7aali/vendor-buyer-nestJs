@@ -9,6 +9,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateMessageDto } from "./dto/create-message.dto";
 import { Prisma } from "../../generated/prisma/client";
+import { CloudinaryService } from "src/cloudinary/cloudinary.service";
 
 type AutoMessageType = "ORDER_PLACED" | "ORDER_UPDATED";
 
@@ -25,7 +26,10 @@ interface CreateAutoMessageInput {
 export class MessagesService {
   private readonly logger = new Logger(MessagesService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   async create(senderId: string, createMessageDto: CreateMessageDto) {
     try {
@@ -52,6 +56,18 @@ export class MessagesService {
       });
     } catch (error) {
       this.handleError("create auto message", error);
+    }
+  }
+
+  async uploadChatImage(file: Express.Multer.File) {
+    try {
+      const upload = await this.cloudinaryService.uploadFile(file, "chat-images");
+      return {
+        url: upload.secure_url,
+        publicId: upload.public_id,
+      };
+    } catch (error) {
+      this.handleError("upload chat image", error);
     }
   }
 
