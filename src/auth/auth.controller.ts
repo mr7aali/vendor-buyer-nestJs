@@ -50,6 +50,8 @@ import { ChangeAdminPasswordDto } from "./dto/change-admin-password.dto";
 import { UpdateBuyerDto } from "./dto/update-buyer.dto";
 import { GoogleAuthDto, AppleAuthDto } from "./dto/social-auth.dto";
 import { SwitchProfileDto } from "./dto/switch-profile.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
+import { LogoutDto } from "./dto/logout.dto";
 // import { UpdateProfileDto } from "./dto/update.dto";
 // import { CreateEmployeeDto } from "./dto/create-employee.dto";
 // import { UpdateEmployeePermissionsDto } from "./dto/update-employee-permissions.dto";
@@ -173,6 +175,21 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async refresh(@Body("refreshToken") refreshToken: string) {
     return this.authService.refreshTokens(refreshToken);
+  }
+
+  @Post("logout")
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async logout(
+    @GetUser()
+    user: {
+      id: string;
+      email: string;
+      userType: "vendor" | "buyer" | "user";
+    },
+    @Body() dto: LogoutDto,
+  ) {
+    return this.authService.logout(user.id, dto.refreshToken);
   }
 
   @Post("switch-profile")
@@ -402,6 +419,20 @@ export class AuthController {
   ) {
     return this.authService.getProfile(user);
   }
+
+  @Get("partner/:partnerUserId")
+  @UseGuards(JwtAuthGuard)
+  async getConnectedPartnerProfile(
+    @GetUser()
+    user: {
+      id: string;
+      email: string;
+      userType: "vendor" | "buyer" | "user";
+    },
+    @Param("partnerUserId") partnerUserId: string,
+  ) {
+    return this.authService.getConnectedPartnerProfile(user, partnerUserId);
+  }
   // Controller
   @Patch("me")
   @UseGuards(JwtAuthGuard)
@@ -415,6 +446,20 @@ export class AuthController {
     @Body() updateDto: UpdateProfileDto,
   ) {
     return this.authService.updateProfile(user, updateDto);
+  }
+
+  @Patch("change-password")
+  @UseGuards(JwtAuthGuard)
+  async changePassword(
+    @GetUser()
+    user: {
+      id: string;
+      email: string;
+      userType: "vendor" | "buyer" | "user";
+    },
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(user.id, dto);
   }
 
   // @Get("all-vendor")
