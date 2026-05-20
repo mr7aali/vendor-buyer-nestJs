@@ -98,6 +98,9 @@ export class MessagesGateway
       this.server
         .to(`user:${message.senderId}`)
         .emit("message_read", { messageId });
+      this.server
+        .to(`user:${message.receiverId}`)
+        .emit("message_read", { messageId });
 
       return message;
     } catch (error) {
