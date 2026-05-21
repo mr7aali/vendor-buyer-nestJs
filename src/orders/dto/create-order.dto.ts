@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsOptional, IsUUID } from "class-validator";
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class CreateOrderDto {
@@ -20,9 +27,13 @@ export class CreateOrderDto {
   @IsNotEmpty()
   shippingAddress: string;
 
+  @ApiPropertyOptional({
+    description: "Optional second line or extra delivery details",
+    example: "Apartment 4B",
+  })
   @IsString()
-  @IsNotEmpty()
-  optionalAddress: string;
+  @IsOptional()
+  optionalAddress?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -35,4 +46,20 @@ export class CreateOrderDto {
   @IsString()
   @IsOptional()
   couponCode?: string;
+
+  @ApiPropertyOptional({
+    description: "Optional note or special instructions for this vendor order",
+    example: "Please call before delivery and use the side entrance.",
+  })
+  @IsString()
+  @MaxLength(500)
+  @IsOptional()
+  customerNote?: string;
+
+  @ApiProperty({
+    description: "Whether the buyer accepted the terms for this vendor order",
+    example: true,
+  })
+  @IsBoolean()
+  termsAccepted: boolean;
 }

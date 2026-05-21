@@ -1,0 +1,3 @@
+ALTER TABLE "Order"
+ADD COLUMN "customerNote" TEXT,
+ADD COLUMN "termsAccepted" BOOLEAN NOT NULL DEFAULT false;

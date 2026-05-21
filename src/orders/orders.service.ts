@@ -37,6 +37,12 @@ export class OrdersService {
 
   async createOrder(buyerId: string, createOrderDto: CreateOrderDto) {
     try {
+      if (!createOrderDto.termsAccepted) {
+        throw new BadRequestException(
+          "You must accept the terms for this vendor order",
+        );
+      }
+
       const connection = await this.prisma.vendorBuyerConnection.findUnique({
         where: {
           vendorId_buyerId: {
@@ -115,7 +121,10 @@ export class OrdersService {
           status: OrderStatus.PENDING,
           shippingAddress: createOrderDto.shippingAddress,
           country: createOrderDto.country,
-          optionalAddress: createOrderDto.optionalAddress,
+          optionalAddress: createOrderDto.optionalAddress?.trim() || "",
+          couponId,
+          customerNote: createOrderDto.customerNote?.trim() || null,
+          termsAccepted: createOrderDto.termsAccepted === true,
         },
       });
 
@@ -226,12 +235,25 @@ export class OrdersService {
               product: true,
             },
           },
+          buyer: {
+            select: {
+              id: true,
+              fullName: true,
+              phone: true,
+            },
+          },
           vendor: {
             select: {
               id: true,
+              fullName: true,
+              storename: true,
               businessName: true,
+              logoUrl: true,
+              address: true,
+              country: true,
             },
           },
+          payments: true,
         },
       });
     } catch (error) {
@@ -251,8 +273,13 @@ export class OrdersService {
         vendor: {
           select: {
             id: true,
+            fullName: true,
+            storename: true,
             businessName: true,
             vendorCode: true,
+            logoUrl: true,
+            address: true,
+            country: true,
           },
         },
         payments: true,

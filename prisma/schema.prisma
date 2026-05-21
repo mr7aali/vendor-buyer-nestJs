@@ -235,6 +235,8 @@ model Order {
   totalAmount     Decimal         @db.Decimal(10, 2)
   shippingAddress String?
   couponId        String?
+  customerNote    String?
+  termsAccepted   Boolean         @default(false)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   status          String

@@ -26,7 +26,7 @@ import { TransactionHistoryModule } from "./transaction-history/transaction-hist
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      // envFilePath: ".env",
+      envFilePath: [".env.local", ".env"],
     }),
     PrismaModule,
     AuthModule,

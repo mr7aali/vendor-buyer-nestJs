@@ -26,6 +26,7 @@ import { ConfigService } from "@nestjs/config";
 import { AdminLoginDto } from "./dto/admin-login.dto";
 import { CreateSuperAdminDto } from "./dto/create-super-admin.dto";
 import { CreateEmployeeDto } from "./dto/Employee.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 import { UpdateProfileDto } from "./dto/update.dto";
 import { GetAllUsersQueryDto } from "./dto/getall.query.dto";
 import { GetAllVendorsQueryDto, VendorSortBy } from "./dto/getAllVendors";
@@ -1790,6 +1791,100 @@ export class AuthService {
     return newTokens;
   }
 
+  async logout(userId: string, refreshToken?: string) {
+    const activeTokens = await this.prisma.refreshToken.findMany({
+      where: {
+        userId,
+        revoked: false,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!activeTokens.length) {
+      return { success: true, message: "Logged out successfully" };
+    }
+
+    if (!refreshToken) {
+      await this.prisma.refreshToken.updateMany({
+        where: {
+          userId,
+          revoked: false,
+        },
+        data: { revoked: true },
+      });
+
+      return { success: true, message: "Logged out successfully" };
+    }
+
+    const matchingTokenIds = (
+      await Promise.all(
+        activeTokens.map(async (token) =>
+          (await bcrypt.compare(refreshToken, token.tokenHash))
+            ? token.id
+            : null,
+        ),
+      )
+    ).filter((tokenId): tokenId is string => Boolean(tokenId));
+
+    if (matchingTokenIds.length) {
+      await this.prisma.refreshToken.updateMany({
+        where: {
+          id: { in: matchingTokenIds },
+        },
+        data: { revoked: true },
+      });
+    }
+
+    return { success: true, message: "Logged out successfully" };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException("Passwords do not match");
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        passwordHash: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        "This account uses social login. Please change your password through your provider.",
+      );
+    }
+
+    const isValid = await bcrypt.compare(
+      dto.currentPassword,
+      user.passwordHash,
+    );
+
+    if (!isValid) {
+      throw new UnauthorizedException("Current password is incorrect");
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+
+    // Revoke all existing refresh tokens so other sessions must sign in again.
+    await this.prisma.refreshToken.updateMany({
+      where: { userId: user.id, revoked: false },
+      data: { revoked: true },
+    });
+
+    return { success: true, message: "Password updated successfully" };
+  }
+
   // ==================== FORGOT PASSWORD METHODS ====================
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
@@ -2276,6 +2371,140 @@ export class AuthService {
         id,
       },
     });
+  }
+
+  async getConnectedPartnerProfile(
+    currentUser: {
+      id: string;
+      email: string;
+      userType: "vendor" | "buyer" | "user";
+    },
+    partnerUserId: string,
+  ) {
+    if (!partnerUserId) {
+      throw new BadRequestException("partnerUserId is required");
+    }
+
+    if (currentUser.userType !== "buyer" && currentUser.userType !== "vendor") {
+      throw new ForbiddenException(
+        "Only buyer and vendor accounts can view connected partner profiles",
+      );
+    }
+
+    const [viewer, partner] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: currentUser.id },
+        include: {
+          buyer: {
+            select: {
+              id: true,
+            },
+          },
+          vendor: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: partnerUserId },
+        select: {
+          id: true,
+          email: true,
+          userType: true,
+          displayName: true,
+          avatarUrl: true,
+          evanAddress: true,
+          createdAt: true,
+          updatedAt: true,
+          buyer: {
+            select: {
+              id: true,
+              userId: true,
+              fullName: true,
+              phone: true,
+              profilePhotoUrl: true,
+              gender: true,
+              country: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+          vendor: {
+            select: {
+              id: true,
+              userId: true,
+              vendorCode: true,
+              fullName: true,
+              phone: true,
+              address: true,
+              storename: true,
+              storeDescription: true,
+              gender: true,
+              businessName: true,
+              businessDescription: true,
+              logoUrl: true,
+              country: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    if (!viewer) {
+      throw new NotFoundException("Current user not found");
+    }
+
+    if (!partner) {
+      throw new NotFoundException("Partner profile not found");
+    }
+
+    if (viewer.id === partner.id) {
+      return this.getProfile(currentUser);
+    }
+
+    if (viewer.userType === partner.userType) {
+      throw new ForbiddenException(
+        "Profiles can only be viewed between connected buyers and vendors",
+      );
+    }
+
+    const vendorId =
+      viewer.userType === "vendor" ? viewer.vendor?.id : partner.vendor?.id;
+    const buyerId =
+      viewer.userType === "buyer" ? viewer.buyer?.id : partner.buyer?.id;
+
+    if (!vendorId || !buyerId) {
+      throw new ForbiddenException("Connected partner profile not available");
+    }
+
+    const connection = await this.prisma.vendorBuyerConnection.findUnique({
+      where: {
+        vendorId_buyerId: {
+          vendorId,
+          buyerId,
+        },
+      },
+      select: {
+        id: true,
+        isActive: true,
+        connectedAt: true,
+      },
+    });
+
+    if (!connection?.isActive) {
+      throw new ForbiddenException(
+        "You can only view the profile of an active connected partner",
+      );
+    }
+
+    return {
+      ...partner,
+      connection,
+    };
   }
   // Service
   // Service - Fixed updateProfile method
