@@ -34,8 +34,13 @@ export class CartService {
                 vendor: {
                   select: {
                     id: true,
+                    fullName: true,
+                    storename: true,
                     businessName: true,
                     vendorCode: true,
+                    logoUrl: true,
+                    country: true,
+                    address: true,
                   },
                 },
               },
